@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Avatar } from "@/components/avatar/Avatar";
 import { Scene } from "@/components/avatar/Scene";
+import { CharacterArt } from "@/components/CharacterArt";
 import { BackButton } from "@/components/ui";
 import { PRESETS } from "@/lib/personas";
 import { useStore } from "@/lib/store";
@@ -53,7 +53,7 @@ export default function CharactersPage() {
             >
               <div className="relative h-56 w-full shrink-0 overflow-hidden">
                 <Scene id={look.scene} blur={2} />
-                <Avatar look={look} className="absolute inset-0 h-full w-full" />
+                <CharacterArt look={look} personaId={persona.id} className="absolute inset-0 h-full w-full" />
                 {current && (
                   <span
                     className="absolute top-2 left-2 rounded-full bg-pink-cta px-2.5 py-1

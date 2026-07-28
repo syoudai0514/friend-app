@@ -1,4 +1,7 @@
+"use client";
+
 import type { CSSProperties, ReactNode } from "react";
+import { useAssets } from "@/lib/assets";
 
 /**
  * 背景シーン。CSSグラデーション＋図形を重ねて描くので、
@@ -244,7 +247,10 @@ export function Scene({
   /** 背景をぼかす量(px)。キャラを手前に立たせたいときに使う */
   blur?: number;
 }) {
+  const { backgroundSrc } = useAssets();
+  const photo = backgroundSrc(id);
   const Comp = SCENES[id] ?? Room;
+
   return (
     <div className={`absolute inset-0 overflow-hidden ${className}`}>
       {/* ぼかすと縁が透けるので、少し拡大してから掛ける */}
@@ -256,7 +262,18 @@ export function Scene({
             : undefined
         }
       >
-        <Comp />
+        {/* public/backgrounds に画像があればそれを使い、無ければCSSで描く */}
+        {photo ? (
+          <div
+            style={layer({
+              backgroundImage: `url("${photo}")`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            })}
+          />
+        ) : (
+          <Comp />
+        )}
       </div>
       {blur > 0 && (
         <>

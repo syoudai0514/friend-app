@@ -80,7 +80,7 @@ export default function ChatPage() {
     state.messages[state.messages.length - 1].text === "";
 
   return (
-    <Stage look={state.look} dim={0.22}>
+    <Stage look={state.look} personaId={state.persona.id} dim={0.22}>
       {/* 上部 */}
       <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between p-3">
         <div className="flex items-center gap-2">

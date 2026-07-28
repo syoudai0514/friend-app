@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Avatar } from "@/components/avatar/Avatar";
 import { Scene } from "@/components/avatar/Scene";
+import { CharacterArt } from "@/components/CharacterArt";
 import { RarityBadge } from "@/components/ui";
 import {
   CLOSET_TABS,
@@ -15,6 +16,7 @@ import {
   SCENE,
   SKIN,
 } from "@/lib/catalog";
+import { useAssets } from "@/lib/assets";
 import { useStore } from "@/lib/store";
 import type { ColorOption, Crop, Look, PartOption } from "@/lib/types";
 
@@ -49,6 +51,7 @@ function randomLook(current: Look): Look {
 export default function ClosetPage() {
   const router = useRouter();
   const { state, ready, setLook } = useStore();
+  const { outfitsWithArt, characterSrc } = useAssets();
 
   // 何も触っていないうちは保存済みの見た目をそのまま映す。
   // 一度でも触ったら edited が下書きになる（localStorage の読み込み待ちも兼ねる）
@@ -69,6 +72,11 @@ export default function ClosetPage() {
 
   if (!ready) return <div className="flex-1 bg-[#12121a]" />;
 
+  const artOutfits = outfitsWithArt(state.persona.id);
+  // 立ち絵の写真を使っているあいだは、髪や顔のパーツは絵に焼き付いているので反映されない
+  const usingPhoto = characterSrc(state.persona.id, draft.outfit) !== null;
+  const photoLocksTab = usingPhoto && ["hair", "accessory", "parts"].includes(tabId);
+
   const save = () => {
     setLook(draft);
     router.push("/");
@@ -79,7 +87,12 @@ export default function ClosetPage() {
       {/* ------------------------------ プレビュー ------------------------------ */}
       <div className="relative flex-1 overflow-hidden">
         <Scene id={draft.scene} blur={3} />
-        <Avatar look={draft} crop="preview" className="absolute inset-0 h-full w-full" />
+        <CharacterArt
+          look={draft}
+          personaId={state.persona.id}
+          crop="preview"
+          className="absolute inset-0 h-full w-full"
+        />
 
         <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
           <button
@@ -172,8 +185,18 @@ export default function ClosetPage() {
           </div>
         )}
 
+        {photoLocksTab && (
+          <p className="bg-[#fff4e5] px-3 py-1.5 text-[11px] leading-snug text-[#8a6a3a]">
+            いまの衣装は用意した立ち絵を使っているので、ここの変更は見た目に反映されません。
+          </p>
+        )}
+
         {/* アイテム一覧 */}
-        <div className="no-scrollbar h-[calc(100%-96px)] overflow-y-auto px-2.5 py-2.5">
+        <div
+          className={`no-scrollbar overflow-y-auto px-2.5 py-2.5 ${
+            photoLocksTab ? "h-[calc(100%-124px)]" : "h-[calc(100%-96px)]"
+          }`}
+        >
           <div className="grid grid-cols-5 gap-2">
             {sub.options.map((opt) => {
               const selected = draft[sub.key] === opt.id;
@@ -198,8 +221,9 @@ export default function ClosetPage() {
                     ) : isColorOption(opt) ? (
                       <Avatar look={preview} crop="face" className="absolute inset-0 h-full w-full" />
                     ) : (
-                      <Avatar
+                      <CharacterArt
                         look={preview}
+                        personaId={state.persona.id}
                         crop={sub.crop as Crop}
                         className="absolute inset-0 h-full w-full"
                       />
@@ -208,6 +232,15 @@ export default function ClosetPage() {
                   {!isColorOption(opt) && (
                     <span className="absolute top-0.5 right-1">
                       <RarityBadge rarity={opt.rarity} />
+                    </span>
+                  )}
+                  {/* 用意した立ち絵がある衣装には印をつける */}
+                  {sub.key === "outfit" && artOutfits.has(opt.id) && (
+                    <span
+                      className="absolute top-0.5 left-1 text-[10px]"
+                      title="用意した立ち絵を使います"
+                    >
+                      📷
                     </span>
                   )}
                   <span

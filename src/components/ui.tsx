@@ -2,25 +2,27 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Avatar } from "@/components/avatar/Avatar";
 import { Scene } from "@/components/avatar/Scene";
+import { CharacterArt } from "@/components/CharacterArt";
 import { AFFECTION_LEVELS, affectionLevel, affectionProgress } from "@/lib/catalog";
 import type { Look } from "@/lib/types";
 
 /** 背景シーン＋立ち絵。子要素はその上に重なる */
 export function Stage({
   look,
+  personaId,
   children,
   dim = 0,
 }: {
   look: Look;
+  personaId: string;
   children?: ReactNode;
   dim?: number;
 }) {
   return (
     <div className="relative flex-1 overflow-hidden">
       <Scene id={look.scene} blur={3} />
-      <Avatar look={look} className="absolute inset-0 h-full w-full" />
+      <CharacterArt look={look} personaId={personaId} className="absolute inset-0 h-full w-full" />
       {dim > 0 && (
         <div className="absolute inset-0 bg-black" style={{ opacity: dim }} />
       )}

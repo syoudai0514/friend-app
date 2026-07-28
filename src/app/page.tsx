@@ -32,7 +32,7 @@ export default function Home() {
       update({ userName: name || "あなた", onboarded: true });
     };
     return (
-      <Stage look={state.look} dim={0.45}>
+      <Stage look={state.look} personaId={state.persona.id} dim={0.45}>
         <div className="absolute inset-0 flex flex-col items-center justify-center px-7">
           <div className="w-full rounded-3xl bg-white/95 p-6 shadow-2xl">
             <h1 className="text-center text-[19px] font-bold text-[#2b2b33]">はじめまして</h1>
@@ -65,7 +65,7 @@ export default function Home() {
 
   /* ----------------------------- ホーム ----------------------------- */
   return (
-    <Stage look={state.look}>
+    <Stage look={state.look} personaId={state.persona.id}>
       {/* 上部 */}
       <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
         <AffectionGauge affection={state.affection} />

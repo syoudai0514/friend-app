@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AssetProvider } from "@/lib/assets";
 import { AppStateProvider } from "@/lib/store";
 import "./globals.css";
 
@@ -23,10 +24,12 @@ export default function RootLayout({
     <html lang="ja" className="h-full">
       <body className="h-full antialiased">
         <AppStateProvider>
+          <AssetProvider>
           {/* スマホ想定。PCでは中央に寄せて縦長の画面として見せる */}
           <div className="mx-auto flex h-full w-full max-w-[480px] flex-col overflow-hidden bg-black shadow-2xl">
             {children}
           </div>
+          </AssetProvider>
         </AppStateProvider>
       </body>
     </html>

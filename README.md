@@ -62,7 +62,32 @@ PCのIPアドレス（例 `http://192.168.1.5:3000`）を叩きます。
 
 ---
 
-## キャラの見た目のしくみ
+## 自分で用意した立ち絵に差し替える
+
+画像を置くだけで、コードを触らずに立ち絵と背景を差し替えられます。
+**ビルドも再起動も不要。置いてリロードするだけです。**
+
+```
+public/characters/aimi/swimsuit.png   ← アイミーのビキニ姿
+public/characters/aimi/default.png    ← 衣装別の画像が無いときの立ち絵
+public/backgrounds/poolside.jpg       ← プールサイドの背景
+```
+
+- まずは `default.png` を1枚置くところから試せます
+- 背景は透過PNG、縦長（例 800×1400）で足元が画像の下端に来るように切り抜くと座りが良いです
+- 画像が無い衣装・背景は、これまでどおりSVG／CSSで描かれます（混在OK）
+- クローゼットでは、立ち絵を用意した衣装に 📷 が付きます
+
+使えるIDの一覧と、画像を作るときのコツは
+[`public/characters/README.md`](public/characters/README.md) と
+[`public/backgrounds/README.md`](public/backgrounds/README.md) にまとめてあります。
+
+> 立ち絵の画像を使っているあいだ、その衣装では髪型・目・口などのパーツ変更は反映されません
+> （絵に焼き付いているため）。クローゼットにもその旨が表示されます。
+
+---
+
+## キャラの見た目のしくみ（画像を置かないとき）
 
 立ち絵は1枚絵ではなく、**SVGのレイヤーを重ねて** 描いています。
 
@@ -86,6 +111,8 @@ PCのIPアドレス（例 `http://192.168.1.5:3000`）を叩きます。
 | `src/components/avatar/accessories.tsx` | 頭のアクセサリー |
 | `src/components/avatar/Scene.tsx` | 背景シーン |
 | `src/lib/catalog.ts` | 選べるパーツの一覧とクローゼットのタブ構成 |
+| `src/components/CharacterArt.tsx` | 画像とSVGのどちらを描くかの切り替え |
+| `src/app/api/assets/route.ts` | `public/` に置かれた画像の検出 |
 
 ### パーツを増やすには
 
