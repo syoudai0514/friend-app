@@ -46,13 +46,13 @@ export default function CharactersPage() {
             <button
               key={persona.id}
               onClick={() => choose(persona.id, persona.name)}
-              className={`relative overflow-hidden rounded-2xl border-2 bg-white text-left shadow-sm
-                          transition active:scale-95 ${
+              className={`relative flex h-[302px] flex-col overflow-hidden rounded-2xl border-2
+                          bg-white text-left shadow-sm transition active:scale-95 ${
                             current ? "border-pink-cta" : "border-transparent"
                           }`}
             >
-              <div className="relative h-56 w-full overflow-hidden">
-                <Scene id={look.scene} />
+              <div className="relative h-56 w-full shrink-0 overflow-hidden">
+                <Scene id={look.scene} blur={2} />
                 <Avatar look={look} className="absolute inset-0 h-full w-full" />
                 {current && (
                   <span

@@ -19,7 +19,7 @@ export function Stage({
 }) {
   return (
     <div className="relative flex-1 overflow-hidden">
-      <Scene id={look.scene} />
+      <Scene id={look.scene} blur={3} />
       <Avatar look={look} className="absolute inset-0 h-full w-full" />
       {dim > 0 && (
         <div className="absolute inset-0 bg-black" style={{ opacity: dim }} />

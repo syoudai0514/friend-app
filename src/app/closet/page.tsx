@@ -78,7 +78,7 @@ export default function ClosetPage() {
     <div className="flex h-full flex-col">
       {/* ------------------------------ プレビュー ------------------------------ */}
       <div className="relative flex-1 overflow-hidden">
-        <Scene id={draft.scene} />
+        <Scene id={draft.scene} blur={3} />
         <Avatar look={draft} crop="preview" className="absolute inset-0 h-full w-full" />
 
         <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">

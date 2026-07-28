@@ -234,11 +234,48 @@ const SCENES: Record<string, () => ReactNode> = {
   washitsu: Washitsu,
 };
 
-export function Scene({ id, className = "" }: { id: string; className?: string }) {
+export function Scene({
+  id,
+  className = "",
+  blur = 0,
+}: {
+  id: string;
+  className?: string;
+  /** 背景をぼかす量(px)。キャラを手前に立たせたいときに使う */
+  blur?: number;
+}) {
   const Comp = SCENES[id] ?? Room;
   return (
     <div className={`absolute inset-0 overflow-hidden ${className}`}>
-      <Comp />
+      {/* ぼかすと縁が透けるので、少し拡大してから掛ける */}
+      <div
+        className="absolute inset-0"
+        style={
+          blur
+            ? { filter: `blur(${blur}px)`, transform: "scale(1.12)" }
+            : undefined
+        }
+      >
+        <Comp />
+      </div>
+      {blur > 0 && (
+        <>
+          {/* ビネット。四隅を落として視線を中央に集める */}
+          <div
+            style={layer({
+              background:
+                "radial-gradient(ellipse at 50% 42%, rgba(0,0,0,0) 40%, rgba(0,0,0,.28) 100%)",
+            })}
+          />
+          {/* 足元を少し暗くして、床に立っている感じを出す */}
+          <div
+            style={layer({
+              background:
+                "linear-gradient(to top, rgba(0,0,0,.22) 0%, rgba(0,0,0,0) 26%)",
+            })}
+          />
+        </>
+      )}
     </div>
   );
 }

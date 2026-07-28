@@ -50,21 +50,24 @@ export function figureDims(id: string): FigureDims {
   return FIGURE_DIMS[id] ?? FIGURE_DIMS.normal;
 }
 
-/** 顔の輪郭 */
+/** 顔の輪郭。こめかみが張って顎に向かって細くなる、アニメ寄りの形 */
 export const FACE_PATH = `
-  M 150,34
-  C 116,34 100,58 100,96
-  C 100,124 106,148 120,162
-  C 128,171 139,177 150,177
-  C 161,177 172,171 180,162
-  C 194,148 200,124 200,96
-  C 200,58 184,34 150,34 Z`;
+  M 150,30
+  C 122,30 103,50 101,84
+  C 100,106 105,126 113,144
+  C 121,162 136,177 150,178
+  C 164,177 179,162 187,144
+  C 195,126 200,106 199,84
+  C 197,50 178,30 150,30 Z`;
 
 /** 胴体。体型に応じて幅が変わる */
 export function torsoPath({ bust, waist, hip }: FigureDims): string {
+  // 上辺は首の幅ぶんしかない。そこから肩へなだらかに下る形にすると
+  // 「箱に頭が乗っている」感じにならない
   return `
-    M ${CX - 30},${BODY.shoulder - 2}
-    C ${CX - 44},${BODY.shoulder + 4} ${CX - bust},${BODY.bust - 22} ${CX - bust},${BODY.bust}
+    M ${CX - 13},${BODY.shoulder - 13}
+    C ${CX - 28},${BODY.shoulder - 10} ${CX - 40},${BODY.shoulder - 2} ${CX - 47},${BODY.shoulder + 14}
+    C ${CX - bust + 2},${BODY.bust - 24} ${CX - bust},${BODY.bust - 16} ${CX - bust},${BODY.bust}
     C ${CX - bust},${BODY.bust + 22} ${CX - waist},${BODY.waist - 16} ${CX - waist},${BODY.waist}
     C ${CX - waist},${BODY.waist + 18} ${CX - hip},${BODY.hip - 12} ${CX - hip},${BODY.hip}
     C ${CX - hip},${BODY.hip + 16} ${CX - hip + 6},${BODY.crotch - 2} ${CX - hip + 16},${BODY.crotch}
@@ -72,20 +75,29 @@ export function torsoPath({ bust, waist, hip }: FigureDims): string {
     C ${CX + hip - 6},${BODY.crotch - 2} ${CX + hip},${BODY.hip + 16} ${CX + hip},${BODY.hip}
     C ${CX + hip},${BODY.hip - 12} ${CX + waist},${BODY.waist + 18} ${CX + waist},${BODY.waist}
     C ${CX + waist},${BODY.waist - 16} ${CX + bust},${BODY.bust + 22} ${CX + bust},${BODY.bust}
-    C ${CX + bust},${BODY.bust - 22} ${CX + 44},${BODY.shoulder + 4} ${CX + 30},${BODY.shoulder - 2}
+    C ${CX + bust},${BODY.bust - 16} ${CX + bust - 2},${BODY.bust - 24} ${CX + 47},${BODY.shoulder + 14}
+    C ${CX + 40},${BODY.shoulder - 2} ${CX + 28},${BODY.shoulder - 10} ${CX + 13},${BODY.shoulder - 13}
     Z`;
 }
 
-/** 腕。side は -1（左）/ +1（右）。胴のシルエットより外側を通す */
+/**
+ * 腕。side は -1（左）/ +1（右）。
+ * 付け根を胴の内側から始めることで、胴に隠れて肩が自然につながる。
+ */
 export function armPath(side: number): string {
-  return `M ${CX + side * 50},${BODY.shoulder + 6}
-          C ${CX + side * 62},${BODY.bust + 14} ${CX + side * 68},${BODY.waist + 18} ${CX + side * 67},${BODY.crotch + 2}`;
+  return `M ${CX + side * 34},${BODY.shoulder + 2}
+          C ${CX + side * 58},${BODY.bust + 6} ${CX + side * 67},${BODY.waist + 14} ${CX + side * 66},${BODY.crotch}`;
+}
+
+/** 手の位置（腕の先端） */
+export function handPos(side: number): { x: number; y: number } {
+  return { x: CX + side * 66, y: BODY.crotch + 4 };
 }
 
 /** 半袖の袖丈 */
 export function shortSleevePath(side: number): string {
-  return `M ${CX + side * 50},${BODY.shoulder + 6}
-          C ${CX + side * 57},${BODY.shoulder + 26} ${CX + side * 62},${BODY.bust + 4} ${CX + side * 63},${BODY.bust + 20}`;
+  return `M ${CX + side * 36},${BODY.shoulder - 2}
+          C ${CX + side * 54},${BODY.shoulder + 26} ${CX + side * 61},${BODY.bust + 4} ${CX + side * 62},${BODY.bust + 22}`;
 }
 
 export function thighPath(side: number): string {
