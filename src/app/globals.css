@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+@theme {
+  --color-pink-cta: #ff6f9c;
+  --color-pink-cta-deep: #f0447c;
+  --color-blue-menu: #3fa9f5;
+  --color-blue-menu-deep: #2a8ed6;
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  background: #0b0b0f;
+  color: #2b2b33;
+  font-family:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic",
+    Meiryo, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------------------------------------------------------------- */
+/*  参考アプリ風のパーツ                                             */
+/* ---------------------------------------------------------------- */
+
+/* 右側の丸いメニューボタン */
+.menu-btn {
+  @apply flex h-[52px] w-[52px] flex-col items-center justify-center rounded-full
+         bg-white/95 text-[9px] font-bold text-[#3a3f52] shadow-[0_2px_8px_rgba(0,0,0,.28)]
+         transition active:scale-90;
+}
+
+.menu-btn-accent {
+  @apply bg-blue-menu text-white;
+}
+
+/* 大きいピンクのCTA */
+.cta {
+  @apply w-full rounded-full bg-gradient-to-b from-[#ff8fb2] to-pink-cta-deep
+         py-4 text-center text-[17px] font-bold text-white
+         shadow-[0_4px_14px_rgba(240,68,124,.45)] transition
+         active:translate-y-[1px] active:shadow-[0_2px_8px_rgba(240,68,124,.4)]
+         disabled:opacity-50;
+}
+
+/* セリフの吹き出し */
+.bubble {
+  @apply rounded-[18px] bg-white/92 px-4 py-3 text-[15px] leading-[1.65] text-[#2b2b33]
+         shadow-[0_4px_16px_rgba(0,0,0,.2)] backdrop-blur-[2px];
+}
+
+/* キャラ名タグ */
+.name-tag {
+  @apply inline-flex items-center gap-1 rounded-full bg-gradient-to-b from-[#ff8fb2] to-pink-cta
+         px-4 py-1 text-[13px] font-bold text-white shadow-[0_2px_6px_rgba(0,0,0,.25)];
+}
+
+/* レアリティのバッジ */
+.rarity-SSR {
+  background: linear-gradient(90deg, #ff7ac4, #7ad2ff, #b58cff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+.rarity-SR {
+  color: #f59331;
+}
+.rarity-NR {
+  color: #4aa3e8;
+}
+
+/* 上部の丸いカウンター */
+.counter-pill {
+  @apply flex items-center gap-1.5 rounded-full bg-black/45 py-1 pr-3 pl-1
+         text-[13px] font-bold text-white backdrop-blur-[2px];
+}
+
+/* スクロールバーを隠す（スマホアプリっぽさのため） */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* セリフのふわっとした出現 */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise {
+  animation: rise 0.32s ease-out;
+}
+
+/* 「考え中」の三点リーダー */
+@keyframes blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+.dot {
+  animation: blink 1.2s infinite;
+}
+.dot:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.dot:nth-child(3) {
+  animation-delay: 0.36s;
+}
