@@ -164,11 +164,200 @@ button {
   }
 }
 
+/* ---------------------------------------------------------------- */
+/*  表情ごとの動き方                                                  */
+/*  同じ揺れでも、速さと入りの動きを変えるだけで気分が伝わる          */
+/* ---------------------------------------------------------------- */
+
+.mood-happy .char-sway {
+  animation-duration: 4.6s;
+}
+.mood-happy .char-breathe {
+  animation-duration: 2.7s;
+}
+.mood-happy .char-react {
+  animation-name: charHop;
+  animation-duration: 0.6s;
+}
+
+.mood-shy .char-sway {
+  animation-duration: 11s;
+}
+.mood-shy .char-react {
+  animation-name: charShrink;
+  animation-duration: 0.5s;
+}
+
+.mood-sad .char-sway {
+  animation-duration: 12s;
+}
+.mood-sad .char-breathe {
+  animation-duration: 6.4s;
+}
+.mood-sad .char-react {
+  animation-name: charSink;
+  animation-duration: 0.9s;
+  animation-fill-mode: forwards;
+}
+
+.mood-angry .char-react {
+  animation-name: charShake;
+  animation-duration: 0.5s;
+}
+
+.mood-surprised .char-react {
+  animation-name: charJolt;
+  animation-duration: 0.5s;
+}
+
+.mood-sleepy .char-sway {
+  animation-duration: 13s;
+}
+.mood-sleepy .char-breathe {
+  animation-duration: 7.4s;
+}
+.mood-sleepy .char-react {
+  animation-name: charDoze;
+  animation-duration: 1.2s;
+  animation-fill-mode: forwards;
+}
+
+@keyframes charHop {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(-1.6%) scale(1.015); }
+  60% { transform: translateY(0.3%) scale(0.995); }
+  100% { transform: translateY(0); }
+}
+@keyframes charShrink {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.985) translateY(0.7%); }
+  100% { transform: scale(1); }
+}
+@keyframes charSink {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(0.9%) scale(0.994); }
+}
+@keyframes charShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-0.9%) rotate(-0.5deg); }
+  45% { transform: translateX(0.9%) rotate(0.5deg); }
+  70% { transform: translateX(-0.5%); }
+}
+@keyframes charJolt {
+  0% { transform: translateY(0) scale(1); }
+  22% { transform: translateY(-2.2%) scale(1.02); }
+  55% { transform: translateY(0.4%) scale(0.99); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes charDoze {
+  0% { transform: rotate(0) translateY(0); }
+  100% { transform: rotate(-1.1deg) translateY(0.5%); }
+}
+
+/* ---------------------------------------------------------------- */
+/*  表情の記号                                                        */
+/* ---------------------------------------------------------------- */
+
+.fx-blush {
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    rgba(255, 105, 145, 0.62) 0%,
+    rgba(255, 120, 155, 0.34) 55%,
+    rgba(255, 120, 155, 0) 100%
+  );
+  animation: fxFade 0.4s ease-out;
+}
+.fx-blush-soft {
+  opacity: 0.55;
+}
+.fx-blush-lines {
+  animation: fxFade 0.5s ease-out;
+}
+
+.fx-steam {
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 70%);
+  animation: fxSteam 1.7s ease-out infinite;
+}
+
+.fx-note {
+  color: #ff7fae;
+  font-weight: 700;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  animation: fxFloat 1.9s ease-out infinite;
+}
+
+.fx-gloom {
+  background: linear-gradient(
+    to bottom,
+    rgba(86, 112, 168, 0.55) 0%,
+    rgba(86, 112, 168, 0.28) 55%,
+    rgba(86, 112, 168, 0) 100%
+  );
+  animation: fxFade 0.6s ease-out;
+}
+
+.fx-bang {
+  color: #ffd45e;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  animation: fxPop 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+.fx-zzz {
+  color: #bcd4f5;
+  font-weight: 700;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  animation: fxFloat 2.6s ease-out infinite;
+}
+
+@keyframes fxFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fxFloat {
+  0% { opacity: 0; transform: translate(-50%, -50%) translateY(0) rotate(-8deg); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateY(-260%) rotate(10deg); }
+}
+@keyframes fxSteam {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  30% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateY(-180%) scale(1.5); }
+}
+@keyframes fxTwinkle {
+  0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(0.7) rotate(0deg); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(35deg); }
+}
+@keyframes fxTear {
+  0% { opacity: 0; transform: translate(-50%, -50%) translateY(0) scale(0.7); }
+  20% { opacity: 1; transform: translate(-50%, -50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateY(220%) scale(0.9); }
+}
+@keyframes fxThrob {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.18); }
+}
+@keyframes fxBurst {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+}
+@keyframes fxPop {
+  from { transform: translate(-50%, -50%) scale(0.3); }
+  to { transform: translate(-50%, -50%) scale(1); }
+}
+
 /* 動きを控えたい設定のときは止める */
 @media (prefers-reduced-motion: reduce) {
   .char-sway,
   .char-breathe,
-  .char-react {
+  .char-react,
+  .fx-note,
+  .fx-zzz,
+  .fx-steam,
+  .fx-bang {
     animation: none;
   }
 }
