@@ -86,7 +86,7 @@ export default function ClosetPage() {
     <div className="flex h-full flex-col">
       {/* ------------------------------ プレビュー ------------------------------ */}
       <div className="relative flex-1 overflow-hidden">
-        <Scene id={draft.scene} blur={3} />
+        <Scene id={draft.scene} blur={1} />
         <CharacterArt
           look={draft}
           personaId={state.persona.id}

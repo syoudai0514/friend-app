@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AffectionGauge, BackButton, Dots, Stage } from "@/components/ui";
 import { isTagIncomplete, splitExpression, type Expression } from "@/lib/expressions";
+import { PENDING_KEY } from "@/app/page";
 import { idleLine } from "@/lib/prompt";
 import { useStore } from "@/lib/store";
 import type { ChatMessage } from "@/lib/types";
@@ -13,6 +14,7 @@ export default function ChatPage() {
   const [busy, setBusy] = useState(false);
   const [expression, setExpression] = useState<Expression>("normal");
   const listRef = useRef<HTMLDivElement>(null);
+  const pendingDone = useRef(false);
   // 会話がまだ無いときだけ、ホームと同じ待機セリフから始める
   const greeting =
     state.messages.length === 0
@@ -23,8 +25,9 @@ export default function ChatPage() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [state.messages]);
 
-  async function send() {
-    const text = input.trim();
+  const sendText = useCallback(
+    async (raw: string) => {
+    const text = raw.trim();
     if (!text || busy) return;
 
     const userMsg: ChatMessage = { role: "user", text, at: Date.now() };
@@ -79,7 +82,27 @@ export default function ChatPage() {
     } finally {
       setBusy(false);
     }
-  }
+    },
+    [busy, state.messages, state.persona, state.userName, state.affection, state.look,
+     addMessage, replaceLastModel, gainAffection],
+  );
+
+  // ホームの入力欄から来たときは、その言葉を開いてすぐ送る
+  useEffect(() => {
+    if (!ready || pendingDone.current) return;
+    pendingDone.current = true;
+    let pending: string | null = null;
+    try {
+      pending = sessionStorage.getItem(PENDING_KEY);
+      sessionStorage.removeItem(PENDING_KEY);
+    } catch {
+      // sessionStorage が使えない環境では何もしない
+    }
+    if (!pending) return;
+    // 描画が落ち着いてから送る
+    const t = setTimeout(() => sendText(pending), 0);
+    return () => clearTimeout(t);
+  }, [ready, sendText]);
 
   if (!ready) return <div className="flex-1 bg-[#12121a]" />;
 
@@ -163,7 +186,7 @@ export default function ChatPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.nativeEvent.isComposing) send();
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) sendText(input);
           }}
           placeholder={busy && lastIsEmptyModel ? "考えてる…" : "お話ししよう！"}
           disabled={busy}
@@ -172,7 +195,7 @@ export default function ChatPage() {
                      focus:border-pink-cta disabled:opacity-70"
         />
         <button
-          onClick={send}
+          onClick={() => sendText(input)}
           disabled={busy || !input.trim()}
           className="grid h-12 w-12 shrink-0 place-items-center rounded-full
                      bg-gradient-to-b from-[#ff8fb2] to-pink-cta-deep text-[18px] text-white

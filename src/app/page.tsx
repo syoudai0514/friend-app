@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AffectionGauge, SideMenu, Stage } from "@/components/ui";
 import { idleLine } from "@/lib/prompt";
@@ -13,9 +14,27 @@ const MENU = [
   { href: "/settings", icon: "⚙️", label: "せってい" },
 ];
 
+/** ホームで打った言葉をトーク画面に引き継ぐための置き場所 */
+export const PENDING_KEY = "friend-app:pending";
+
 export default function Home() {
+  const router = useRouter();
   const { state, ready, update } = useStore();
   const [nameInput, setNameInput] = useState("");
+  const [draft, setDraft] = useState("");
+
+  /** ホームから話しかける。打った言葉を持ったままトーク画面へ移る */
+  const startTalk = () => {
+    const text = draft.trim();
+    if (text) {
+      try {
+        sessionStorage.setItem(PENDING_KEY, text);
+      } catch {
+        // 使えない環境ではトーク画面を開くだけにする
+      }
+    }
+    router.push("/chat");
+  };
   // ↻ を押すたびに次のセリフへ。好感度を起点にすることで、
   // 開くたびに違うセリフから始まる
   const [step, setStep] = useState(0);
@@ -104,9 +123,42 @@ export default function Home() {
           </div>
         </div>
 
-        <Link href="/chat" className="mt-2.5 block">
-          <span className="cta block">{state.persona.name}に話しかける</span>
-        </Link>
+        {/* 参考アプリと同じく、ここから直接話しかけられる */}
+        <div className="mt-2.5 flex items-center gap-2">
+          <div
+            className="flex flex-1 items-center rounded-full bg-gradient-to-r
+                       from-[#ff8fb2] via-[#c9a0f0] to-[#7ec8f5] p-[2px]"
+          >
+            <div className="flex flex-1 items-center rounded-full bg-white/95 pr-1 pl-4">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) startTalk();
+                }}
+                placeholder="お話ししよう！"
+                className="h-11 min-w-0 flex-1 bg-transparent text-[15px] text-[#2b2b33]
+                           outline-none placeholder:text-[#a8a8b6]"
+              />
+              <button
+                onClick={startTalk}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[17px]
+                           text-pink-cta-deep transition active:scale-90"
+                aria-label="送る"
+              >
+                ➤
+              </button>
+            </div>
+          </div>
+          <Link
+            href="/chat"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/95
+                       text-[19px] shadow-[0_2px_8px_rgba(0,0,0,.25)] active:scale-90"
+            aria-label="トークを開く"
+          >
+            💬
+          </Link>
+        </div>
       </div>
     </Stage>
   );

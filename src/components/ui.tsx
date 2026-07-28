@@ -26,7 +26,7 @@ export function Stage({
 }) {
   return (
     <div className="relative flex-1 overflow-hidden">
-      <Scene id={look.scene} blur={3} />
+      <Scene id={look.scene} blur={1} />
       <CharacterArt
         look={look}
         personaId={personaId}

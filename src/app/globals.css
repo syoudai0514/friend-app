@@ -51,10 +51,11 @@ button {
          disabled:opacity-50;
 }
 
-/* セリフの吹き出し */
+/* セリフの吹き出し。
+   下地を透かして脚が見えるように、白は薄めにしてぼかしで文字を守る */
 .bubble {
-  @apply rounded-[18px] bg-white/92 px-4 py-3 text-[15px] leading-[1.65] text-[#2b2b33]
-         shadow-[0_4px_16px_rgba(0,0,0,.2)] backdrop-blur-[2px];
+  @apply rounded-[20px] bg-white/68 px-4 py-3 text-[15px] leading-[1.65] text-[#2b2b33]
+         shadow-[0_4px_16px_rgba(0,0,0,.16)] backdrop-blur-[7px];
 }
 
 /* キャラ名タグ */
