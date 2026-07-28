@@ -45,7 +45,7 @@ button {
 /* 大きいピンクのCTA */
 .cta {
   @apply w-full rounded-full bg-gradient-to-b from-[#ff8fb2] to-pink-cta-deep
-         py-4 text-center text-[17px] font-bold text-white
+         py-3.5 text-center text-[16px] font-bold text-white
          shadow-[0_4px_14px_rgba(240,68,124,.45)] transition
          active:translate-y-[1px] active:shadow-[0_2px_8px_rgba(240,68,124,.4)]
          disabled:opacity-50;

@@ -85,25 +85,26 @@ export default function Home() {
 
       <SideMenu items={MENU} />
 
-      {/* 下部のセリフ＋CTA */}
-      <div className="absolute inset-x-0 bottom-0 p-3 pb-5">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="name-tag">{state.persona.name}</span>
+      {/* 下部のセリフ＋CTA。
+          名前タグと↻を吹き出しに重ねて段を減らし、そのぶん脚を見せる */}
+      <div className="absolute inset-x-0 bottom-0 px-3 pt-3 pb-3.5">
+        <div className="relative">
+          <span className="name-tag absolute -top-2.5 left-1 z-10">{state.persona.name}</span>
           <button
             onClick={() => setStep((s) => s + 1)}
-            className="grid h-9 w-9 place-items-center rounded-full bg-white/85 text-[15px]
-                       text-[#5c5c6b] shadow-[0_2px_6px_rgba(0,0,0,.2)] active:scale-90"
+            className="absolute -top-2.5 right-1 z-10 grid h-8 w-8 place-items-center rounded-full
+                       bg-white/90 text-[14px] text-[#5c5c6b] shadow-[0_2px_6px_rgba(0,0,0,.25)]
+                       active:scale-90"
             aria-label="セリフを変える"
           >
             ↻
           </button>
+          <div key={line} className="bubble animate-rise min-h-[56px] pt-4">
+            {line}
+          </div>
         </div>
 
-        <div key={line} className="bubble animate-rise min-h-[76px]">
-          {line}
-        </div>
-
-        <Link href="/chat" className="mt-3 block">
+        <Link href="/chat" className="mt-2.5 block">
           <span className="cta block">{state.persona.name}に話しかける</span>
         </Link>
       </div>
