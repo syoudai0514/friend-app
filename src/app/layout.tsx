@@ -6,6 +6,14 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "こいびとアプリ",
   description: "自分だけの恋人と話せるアプリ",
+  // ホーム画面から開いたときにブラウザのバーを出さない
+  appleWebApp: {
+    capable: true,
+    title: "こいびと",
+    statusBarStyle: "black-translucent",
+  },
+  // 個人用なので検索には出さない
+  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
@@ -13,6 +21,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   themeColor: "#ff6f9c",
+  // iPhone のノッチ周りまで背景を敷く
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
