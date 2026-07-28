@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AffectionGauge, BackButton, Dots, Stage } from "@/components/ui";
+import { isTagIncomplete, splitExpression, type Expression } from "@/lib/expressions";
 import { idleLine } from "@/lib/prompt";
 import { useStore } from "@/lib/store";
 import type { ChatMessage } from "@/lib/types";
@@ -10,6 +11,7 @@ export default function ChatPage() {
   const { state, ready, addMessage, replaceLastModel, gainAffection, clearMessages } = useStore();
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [expression, setExpression] = useState<Expression>("normal");
   const listRef = useRef<HTMLDivElement>(null);
   // 会話がまだ無いときだけ、ホームと同じ待機セリフから始める
   const greeting =
@@ -58,10 +60,17 @@ export default function ChatPage() {
         const { done, value } = await reader.read();
         if (done) break;
         acc += decoder.decode(value, { stream: true });
-        replaceLastModel(acc);
+        // 先頭のタグを読み取って表情を切り替え、本文だけを吹き出しに出す。
+        // タグが途中までしか届いていないときは、出しかけの `[ha` が
+        // 見えないように表示を待つ
+        const { expression: ex, body } = splitExpression(acc);
+        setExpression(ex);
+        if (!isTagIncomplete(acc)) replaceLastModel(body);
       }
       acc += decoder.decode();
-      replaceLastModel(acc);
+      const final = splitExpression(acc);
+      setExpression(final.expression);
+      replaceLastModel(final.body);
 
       // 会話が成立したら好感度が上がる
       if (res.headers.get("X-Chat-Error") !== "1") gainAffection(1);
@@ -80,7 +89,13 @@ export default function ChatPage() {
     state.messages[state.messages.length - 1].text === "";
 
   return (
-    <Stage look={state.look} personaId={state.persona.id} dim={0.22}>
+    <Stage
+      look={state.look}
+      personaId={state.persona.id}
+      dim={0.22}
+      expression={expression}
+      talking={busy}
+    >
       {/* 上部 */}
       <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between p-3">
         <div className="flex items-center gap-2">

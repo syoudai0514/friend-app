@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Scene } from "@/components/avatar/Scene";
 import { CharacterArt } from "@/components/CharacterArt";
 import { AFFECTION_LEVELS, affectionLevel, affectionProgress } from "@/lib/catalog";
+import type { Expression } from "@/lib/expressions";
 import type { Look } from "@/lib/types";
 
 /** 背景シーン＋立ち絵。子要素はその上に重なる */
@@ -13,16 +14,26 @@ export function Stage({
   personaId,
   children,
   dim = 0,
+  expression = "normal",
+  talking = false,
 }: {
   look: Look;
   personaId: string;
   children?: ReactNode;
   dim?: number;
+  expression?: Expression;
+  talking?: boolean;
 }) {
   return (
     <div className="relative flex-1 overflow-hidden">
       <Scene id={look.scene} blur={3} />
-      <CharacterArt look={look} personaId={personaId} className="absolute inset-0 h-full w-full" />
+      <CharacterArt
+        look={look}
+        personaId={personaId}
+        className="absolute inset-0 h-full w-full"
+        expression={expression}
+        talking={talking}
+      />
       {dim > 0 && (
         <div className="absolute inset-0 bg-black" style={{ opacity: dim }} />
       )}

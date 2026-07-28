@@ -107,6 +107,72 @@ button {
   animation: rise 0.32s ease-out;
 }
 
+/* ---------------------------------------------------------------- */
+/*  立ち絵の動き                                                     */
+/*  足元を軸にゆっくり揺らし、呼吸で上下させる。                     */
+/*  transform が競合しないよう、入れ子を分けてそれぞれに掛ける       */
+/* ---------------------------------------------------------------- */
+
+.char-sway,
+.char-breathe,
+.char-react {
+  height: 100%;
+  width: 100%;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+.char-sway {
+  animation: charSway 7.5s ease-in-out infinite;
+}
+.char-breathe {
+  animation: charBreathe 4.2s ease-in-out infinite;
+}
+.char-react {
+  animation: charReact 0.42s ease-out;
+}
+
+@keyframes charSway {
+  0%,
+  100% {
+    transform: rotate(0.32deg) translateX(0.3%);
+  }
+  50% {
+    transform: rotate(-0.3deg) translateX(-0.3%);
+  }
+}
+
+@keyframes charBreathe {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  50% {
+    transform: translateY(-0.45%) scaleY(1.006);
+  }
+}
+
+@keyframes charReact {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.014) translateY(-0.6%);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 動きを控えたい設定のときは止める */
+@media (prefers-reduced-motion: reduce) {
+  .char-sway,
+  .char-breathe,
+  .char-react {
+    animation: none;
+  }
+}
+
 /* 「考え中」の三点リーダー */
 @keyframes blink {
   0%,

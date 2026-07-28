@@ -13,8 +13,11 @@ import type { AssetManifest } from "@/app/api/assets/route";
 const EMPTY: AssetManifest = { characters: {}, backgrounds: {} };
 
 interface AssetValue {
-  /** この衣装の立ち絵。無ければ null（＝SVGで描く） */
-  characterSrc: (personaId: string, outfitId: string) => string | null;
+  /**
+   * この衣装の立ち絵。無ければ null（＝SVGで描く）。
+   * 表情を渡すと `<衣装>@<表情>.png` を優先して探す。
+   */
+  characterSrc: (personaId: string, outfitId: string, expression?: string) => string | null;
   /** この背景の画像。無ければ null（＝CSSで描く） */
   backgroundSrc: (sceneId: string) => string | null;
   /** 立ち絵が用意されている衣装ID。クローゼットのバッジに使う */
@@ -43,10 +46,19 @@ export function AssetProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AssetValue>(
     () => ({
-      characterSrc: (personaId, outfitId) => {
+      characterSrc: (personaId, outfitId, expression) => {
         const folder = manifest.characters[personaId];
         if (!folder) return null;
-        return folder[outfitId] ?? folder.default ?? null;
+        // 表情つきを先に探し、無ければ素の立ち絵に落とす
+        const candidates =
+          expression && expression !== "normal"
+            ? [`${outfitId}@${expression}`, outfitId, `default@${expression}`, "default"]
+            : [outfitId, "default"];
+        for (const key of candidates) {
+          const src = folder[key.toLowerCase()];
+          if (src) return src;
+        }
+        return null;
       },
       backgroundSrc: (sceneId) => manifest.backgrounds[sceneId] ?? null,
       outfitsWithArt: (personaId) => new Set(Object.keys(manifest.characters[personaId] ?? {})),

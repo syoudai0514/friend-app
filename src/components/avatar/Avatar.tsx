@@ -1,4 +1,5 @@
 import { EYE_COLOR_MAP, HAIR_COLOR_MAP, SKIN_MAP, color } from "@/lib/catalog";
+import { EXPRESSIONS, type Expression } from "@/lib/expressions";
 import type { Crop, Look } from "@/lib/types";
 import { HeadAccessory } from "./accessories";
 import { Brows, Earrings, Eyes, Glasses, Makeup, Mouth, Nose } from "./face";
@@ -29,10 +30,19 @@ export function Avatar({
   look,
   crop = "full",
   className = "",
+  expression = "normal",
+  blink = false,
+  mouthOpen = false,
 }: {
   look: Look;
   crop?: Crop;
   className?: string;
+  /** 表情。目・口・まゆげ・頬をまとめて差し替える */
+  expression?: Expression;
+  /** まばたき中は目を閉じる */
+  blink?: boolean;
+  /** しゃべっている最中は口を開ける */
+  mouthOpen?: boolean;
 }) {
   const hair = color(HAIR_COLOR_MAP, look.hairColor, "blonde");
   const eye = color(EYE_COLOR_MAP, look.eyeColor, "sky");
@@ -40,9 +50,16 @@ export function Avatar({
   const d = figureDims(look.figure);
   const limb = LIMB_WIDTH[look.figure] ?? LIMB_WIDTH.normal;
 
+  // 表情でベースの顔を上書きし、そのうえに まばたき／口の動き を重ねる
+  const ex = EXPRESSIONS[expression] ?? {};
+  const eyesId = blink ? "blink" : (ex.eyes ?? look.eyes);
+  const mouthId = mouthOpen ? "open" : (ex.mouth ?? look.mouth);
+  const browsId = ex.brows ?? look.brows;
+  const makeupId = ex.makeup ?? look.makeup;
+
   /** 同じ見た目なら同じID、違う見た目なら違うID。
    *  1ページに複数のアバターを並べたときの defs 衝突を防ぐ */
-  const uid = `${look.eyes}${look.eyeColor}${look.makeup}${look.skin}${look.figure}`;
+  const uid = `${eyesId}${look.eyeColor}${makeupId}${look.skin}${look.figure}`;
 
   const skinInk = ink(skin.value, 0.3);
   const sh1 = shade1(skin.value);
@@ -228,11 +245,11 @@ export function Avatar({
         </g>
         <Earrings variant={look.earrings} />
 
-        <Makeup variant={look.makeup} uid={uid} />
-        <Brows variant={look.brows} color={hair.dark} />
-        <Eyes variant={look.eyes} eye={eye} lashColor={hair.dark} skin={skin} uid={uid} />
+        <Makeup variant={makeupId} uid={uid} />
+        <Brows variant={browsId} color={hair.dark} />
+        <Eyes variant={eyesId} eye={eye} lashColor={hair.dark} skin={skin} uid={uid} />
         <Nose variant={look.nose} skin={skin} />
-        <Mouth variant={look.mouth} />
+        <Mouth variant={mouthId} />
         <Glasses variant={look.glasses} />
 
         <HairFront variant={look.hair} color={hair} />
