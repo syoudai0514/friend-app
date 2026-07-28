@@ -79,6 +79,7 @@ const cloth = (c: string) => `url(#${gradId(c)})`;
 /** 服ごとに使う色。使う色のぶんだけグラデを定義する */
 const OUTFIT_PALETTE: Record<string, string[]> = {
   swimsuit: ["#fdfbf5", "#e8934c", "#7ec8e8"],
+  street: ["#e07a2e", "#2a2529", "#3a2e28", "#5a4438"],
   sailor: ["#fdfdfd", "#2f4a7a", "#cf3f4e"],
   blazer: ["#fdfdfd", "#39405c", "#8a4450", "#4a5273"],
   hoodie: ["#e8bcd6", "#d9a8c4", "#6d7a99"],
@@ -203,6 +204,86 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
       </g>
     );
   },
+
+  /* ------------------------------ ストリート ------------------------------ */
+  street: ({ d }) => (
+    <g>
+      {/* インナー */}
+      <path d={topShape(d, BODY.shoulder - 2, BODY.waist - 10, 0)} fill={cloth("#2a2529")} />
+      {/* 肩を出した長袖 */}
+      <Sleeves color="#e07a2e" long width={26} />
+      {/* クロップトップ */}
+      <path
+        d={`M ${CX - 34},${BODY.shoulder + 10}
+            C ${CX - 48},${BODY.shoulder + 16} ${CX - d.bust - 3},${BODY.bust - 18} ${CX - d.bust - 3},${BODY.bust}
+            C ${CX - d.bust - 3},${BODY.bust + 20} ${CX - d.waist - 3},${BODY.waist - 28} ${CX - d.waist - 3},${BODY.waist - 16}
+            L ${CX + d.waist + 3},${BODY.waist - 16}
+            C ${CX + d.waist + 3},${BODY.waist - 28} ${CX + d.bust + 3},${BODY.bust + 20} ${CX + d.bust + 3},${BODY.bust}
+            C ${CX + d.bust + 3},${BODY.bust - 18} ${CX + 48},${BODY.shoulder + 16} ${CX + 34},${BODY.shoulder + 10}
+            C ${CX + 16},${BODY.bust - 4} ${CX - 16},${BODY.bust - 4} ${CX - 34},${BODY.shoulder + 10} Z`}
+        fill={cloth("#e07a2e")}
+      />
+      {/* 裾のライン */}
+      <path
+        d={`M ${CX - d.waist - 3},${BODY.waist - 22} L ${CX + d.waist + 3},${BODY.waist - 22}`}
+        stroke={mix("#e07a2e", "#3b2430", 0.35)}
+        strokeWidth={2.4}
+      />
+      {/* 巻きスカート */}
+      <path
+        d={`M ${CX - d.hip - 2},${BODY.hip - 6}
+            L ${CX + d.hip + 2},${BODY.hip - 6}
+            C ${CX + d.hip + 4},${BODY.hip + 30} ${CX + d.hip},${BODY.crotch + 38} ${CX + d.hip - 4},${BODY.crotch + 50}
+            L ${CX - d.hip + 4},${BODY.crotch + 50}
+            C ${CX - d.hip},${BODY.crotch + 38} ${CX - d.hip - 4},${BODY.hip + 30} ${CX - d.hip - 2},${BODY.hip - 6} Z`}
+        fill={cloth("#3a2e28")}
+      />
+      {/* 重ねた別布 */}
+      <path
+        d={`M ${CX + 4},${BODY.hip - 6}
+            L ${CX + d.hip + 2},${BODY.hip - 6}
+            C ${CX + d.hip + 4},${BODY.hip + 30} ${CX + d.hip},${BODY.crotch + 38} ${CX + d.hip - 4},${BODY.crotch + 50}
+            L ${CX + 12},${BODY.crotch + 50} Z`}
+        fill={cloth("#5a4438")}
+      />
+      <g stroke={mix("#3a2e28", "#000000", 0.3)} strokeWidth={1.2} opacity={0.55}>
+        {[10, 20, 30, 40].map((o) => (
+          <path key={o} d={`M ${CX + 6 + o},${BODY.hip - 4} L ${CX + 10 + o},${BODY.crotch + 48}`} />
+        ))}
+      </g>
+      {/* ベルトとチェーン */}
+      <path
+        d={`M ${CX - d.hip - 2},${BODY.hip - 4} L ${CX + d.hip + 2},${BODY.hip - 4}`}
+        stroke="#e0d2b0"
+        strokeWidth={2.6}
+      />
+      <g fill="none" stroke="#d9c48a" strokeWidth={1.5} strokeLinecap="round">
+        <path
+          d={`M ${CX - d.hip + 6},${BODY.hip + 2} C ${CX - 12},${BODY.hip + 24} ${CX + 8},${BODY.hip + 22} ${CX + d.hip - 8},${BODY.hip + 2}`}
+        />
+        <path
+          d={`M ${CX - d.hip + 12},${BODY.hip + 6} C ${CX - 8},${BODY.hip + 34} ${CX + 10},${BODY.hip + 30} ${CX + d.hip - 14},${BODY.hip + 8}`}
+        />
+        <path d={`M ${CX + 6},${BODY.hip - 2} L ${CX + 9},${BODY.hip + 22}`} />
+      </g>
+      <circle cx={CX + 9} cy={BODY.hip + 24} r={2.4} fill="#e0d2b0" />
+      {/* ブーツ */}
+      <g fill={cloth("#3a2e28")}>
+        <path
+          d={`M ${CX - 32},${BODY.ankle - 24} L ${CX - 10},${BODY.ankle - 24} L ${CX - 10},${BODY.ankle + 8}
+              L ${CX - 33},${BODY.ankle + 8} Z`}
+        />
+        <path
+          d={`M ${CX + 10},${BODY.ankle - 24} L ${CX + 32},${BODY.ankle - 24} L ${CX + 33},${BODY.ankle + 8}
+              L ${CX + 10},${BODY.ankle + 8} Z`}
+        />
+      </g>
+      <g fill="#8a5a34">
+        <path d={`M ${CX - 33},${BODY.ankle - 26} l 24,0 l 0,7 l -24,0 Z`} />
+        <path d={`M ${CX + 9},${BODY.ankle - 26} l 24,0 l 0,7 l -24,0 Z`} />
+      </g>
+    </g>
+  ),
 
   /* ----------------------------- セーラー服 ----------------------------- */
   sailor: ({ d }) => (

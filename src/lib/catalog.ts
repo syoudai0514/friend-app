@@ -80,6 +80,7 @@ export const MAKEUP: PartOption[] = [
 
 export const OUTFIT: PartOption[] = [
   { id: "swimsuit", name: "ビキニ＆パレオ", rarity: "SSR" },
+  { id: "street", name: "ストリート", rarity: "SSR" },
   { id: "sailor", name: "セーラー服", rarity: "SSR" },
   { id: "blazer", name: "ブレザー", rarity: "SR" },
   { id: "hoodie", name: "パーカー", rarity: "NR" },
