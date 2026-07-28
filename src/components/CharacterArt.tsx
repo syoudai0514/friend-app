@@ -152,10 +152,12 @@ export function CharacterArt({
   // 弾みは key を変えて描き直させることでアニメを頭から流す
   return (
     <div ref={hostRef} className={`${className} mood-${expression}`}>
-      <div className="char-sway">
-        <div className="char-breathe">
-          <div key={`${expression}-${talking}`} className="char-react">
-            {inner}
+      <div className="char-zoom">
+        <div className="char-sway">
+          <div className="char-breathe">
+            <div key={`${expression}-${talking}`} className="char-react">
+              {inner}
+            </div>
           </div>
         </div>
       </div>

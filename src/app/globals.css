@@ -113,6 +113,7 @@ button {
 /*  transform が競合しないよう、入れ子を分けてそれぞれに掛ける       */
 /* ---------------------------------------------------------------- */
 
+.char-zoom,
 .char-sway,
 .char-breathe,
 .char-react {
@@ -120,6 +121,14 @@ button {
   width: 100%;
   transform-origin: 50% 100%;
   will-change: transform;
+}
+
+/* ゆっくり寄って、ゆっくり引く。
+   背景は動かさずキャラだけを寄せると、こちらに近づいてくるように見える。
+   軸を上寄りに置いているのは、顔から離れずに寄るため */
+.char-zoom {
+  transform-origin: 50% 34%;
+  animation: charZoom 15s ease-in-out infinite;
 }
 
 .char-sway {
@@ -130,6 +139,16 @@ button {
 }
 .char-react {
   animation: charReact 0.42s ease-out;
+}
+
+@keyframes charZoom {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.062);
+  }
 }
 
 @keyframes charSway {
@@ -351,6 +370,7 @@ button {
 
 /* 動きを控えたい設定のときは止める */
 @media (prefers-reduced-motion: reduce) {
+  .char-zoom,
   .char-sway,
   .char-breathe,
   .char-react,
