@@ -16,6 +16,7 @@ export const BUILT_IN_ASSETS: AssetManifest = {
       "mermaid@happy": "/characters/aimi/mermaid%40happy.png",
       "roomwear": "/characters/aimi/roomwear.png",
       "sailor": "/characters/aimi/sailor.png",
+      "seifuku": "/characters/aimi/seifuku.png",
       "suit": "/characters/aimi/suit.png",
       "swimsuit": "/characters/aimi/swimsuit.png"
     },

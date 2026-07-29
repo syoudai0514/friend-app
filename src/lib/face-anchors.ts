@@ -58,6 +58,9 @@ export const PHOTO_ANCHORS: Record<string, FaceAnchor> = {
   "aimi/roomwear": {
     eyeY: 0.1314, headX: 0.4848, cheekDX: 0.0952, cheekY: 0.1644, markDX: 0.4086, markY: 0.0864,
   },
+  "aimi/seifuku": {
+    eyeY: 0.1265, headX: 0.482, cheekDX: 0.1361, cheekY: 0.1595, markDX: 0.58, markY: 0.0815,
+  },
 };
 
 /** 目印を持っていない立ち絵のための当たり。だいたいの位置には乗る */
