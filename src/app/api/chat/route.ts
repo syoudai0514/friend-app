@@ -62,7 +62,9 @@ export async function POST(req: Request) {
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const requestedModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  // Google が新しい世代を出しても追従できるよう、まずは常に最新を指すエイリアスを試す。
+  // それも無ければ 404 になり、下の自動フォールバックが本当に使えるモデルを探しにいく
+  const requestedModel = process.env.GEMINI_MODEL || "gemini-flash-latest";
 
   const generationConfig = {
     systemInstruction: buildSystemInstruction({ persona, userName, affection, look }),
@@ -154,13 +156,20 @@ function isModelNotFound(e: unknown): boolean {
 const NOT_CHAT_MODEL = /embed|image|imagen|vision|audio|tts|veo|aqa|learnlm|native-audio|live/i;
 // preview/exp/thinking 系は無料枠が極端に少ないことがあるので、最後の手段にする
 const RISKY_QUOTA = /exp|preview|thinking/i;
-const IS_LITE = /lite/i;
+
+/** モデル名から "gemini-3.5" のような世代番号を取り出す。古い世代は無料枠が
+ *  先に削られていることがあるので、新しい世代を優先する材料にする */
+function modelGeneration(name: string): number {
+  const m = /gemini-(\d+(?:\.\d+)?)/.exec(name);
+  return m ? parseFloat(m[1]) : -1;
+}
 
 /**
  * このAPIキーで実際に generateContent が使えるモデルを探す。
  * リクエストしたものと同じ名前は除く（それは今まさに失敗したモデルなので）。
- * 雑談向けの安定した flash モデルを優先し、無料枠が厳しいpreview/exp系は
- * 他に選択肢が無いときだけ使う
+ * 世代が新しいものほど優先し（古い世代は無料枠が減らされていることがある）、
+ * 無料枠が厳しいpreview/exp系は他に選択肢が無いときだけ使う。
+ * lite かどうかでは優先度を下げない（世代によっては lite の方が枠が広いこともある）
  */
 async function findFallbackModel(
   ai: GoogleGenAI,
@@ -173,11 +182,15 @@ async function findFallbackModel(
     // 全部が画像/音声系だった場合の保険として、除外前の一覧にも戻れるようにする
     const pool = safe.length > 0 ? safe : candidates;
 
+    const byNewest = (a: string, b: string) => modelGeneration(b) - modelGeneration(a);
+    const flash = pool.filter((n) => /flash/i.test(n)).sort(byNewest);
+    const pro = pool.filter((n) => /pro/i.test(n)).sort(byNewest);
+
     return (
-      pool.find((n) => /flash/i.test(n) && !RISKY_QUOTA.test(n) && !IS_LITE.test(n)) ??
-      pool.find((n) => /flash/i.test(n) && !RISKY_QUOTA.test(n)) ??
-      pool.find((n) => /flash/i.test(n)) ??
-      pool.find((n) => /pro/i.test(n) && !RISKY_QUOTA.test(n)) ??
+      flash.find((n) => !RISKY_QUOTA.test(n)) ??
+      flash[0] ??
+      pro.find((n) => !RISKY_QUOTA.test(n)) ??
+      pro[0] ??
       pool[0] ??
       null
     );
