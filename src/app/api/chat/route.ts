@@ -73,7 +73,10 @@ export async function POST(req: Request) {
     systemInstruction: buildSystemInstruction({ persona, userName, affection, look }),
     temperature: 1.05,
     topP: 0.95,
-    maxOutputTokens: 400,
+    // thinkingConfig を外して再試行したモデルは、見えない思考トークンも
+    // この上限を分け合って消費するらしく、400だと本文が出る前に尽きて
+    // 「ウチは甘」のように文の途中で切れてしまった。多めに確保しておく
+    maxOutputTokens: 1024,
     // 雑談に思考トークンは要らない。無料枠の節約と応答速度のため切る
     // （モデルによっては受け付けず400になるので、その場合は startStream 内で外す）
     thinkingConfig: { thinkingBudget: 0 },
@@ -85,7 +88,7 @@ export async function POST(req: Request) {
     ].map((category) => ({ category, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH })),
   };
 
-  let stream: AsyncGenerator<{ text?: string }>;
+  let stream: AsyncGenerator<GenerateContentResponse>;
   // エラー文で「どのモデルが困っているか」を言えるように、実際に使ったモデル名を覚えておく
   let usedModel = requestedModel;
   try {
@@ -114,6 +117,7 @@ export async function POST(req: Request) {
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
       let sent = 0;
+      let finishReason: string | undefined;
       try {
         for await (const chunk of stream) {
           const text = chunk.text;
@@ -121,11 +125,15 @@ export async function POST(req: Request) {
             sent += text.length;
             controller.enqueue(encoder.encode(text));
           }
+          finishReason = chunk.candidates?.[0]?.finishReason ?? finishReason;
         }
         if (sent === 0) {
           controller.enqueue(
             encoder.encode("……ごめん、今ちょっとうまく言葉が出てこなかった。もう一回言ってくれる？"),
           );
+        } else if (finishReason === "MAX_TOKENS") {
+          // 上限に届いて文の途中で切れたとき、切れたまま出さない
+          controller.enqueue(encoder.encode("……"));
         }
       } catch (e) {
         controller.enqueue(encoder.encode(await friendlyError(e, ai, requestedModel, usedModel)));
