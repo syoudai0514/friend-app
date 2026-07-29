@@ -64,10 +64,10 @@ export async function POST(req: Request) {
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  // "-latest" エイリアスは裏で何に解決されるか分からず、指示への追従が弱い
-  // モデルに当たることがあったため、素性のはっきりした固定モデルに戻す。
+  // Google AI Studio の「モデルごとのレート制限」で確認したところ、
+  // lite系がいちばん無料枠（RPM）が広かったので、それを初期値にする。
   // これが無ければ下の自動フォールバックが本当に使えるモデルを探しにいく
-  const requestedModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const requestedModel = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 
   const generationConfig: GenerateContentConfig = {
     systemInstruction: buildSystemInstruction({ persona, userName, affection, look }),
@@ -188,11 +188,11 @@ async function startStream(
 
 // 画像/音声/埋め込み専用など、雑談の返信には使えないモデル
 const NOT_CHAT_MODEL = /embed|image|imagen|vision|audio|tts|veo|aqa|learnlm|native-audio|live/i;
-// preview/exp/thinking 系は無料枠が極端に少ないことがあるので、最後の手段にする
+// preview/exp/thinking系や、出たばかりの世代は無料枠がまだ十分に開放されて
+// いないことがあるので、最後の手段にする
 const RISKY_QUOTA = /exp|preview|thinking/i;
 
-/** モデル名から "gemini-3.5" のような世代番号を取り出す。古い世代は無料枠が
- *  先に削られていることがあるので、新しい世代を優先する材料にする */
+/** モデル名から "gemini-3.5" のような世代番号を取り出す（新しさの参考程度に使う） */
 function modelGeneration(name: string): number {
   const m = /gemini-(\d+(?:\.\d+)?)/.exec(name);
   return m ? parseFloat(m[1]) : -1;
@@ -201,9 +201,11 @@ function modelGeneration(name: string): number {
 /**
  * このAPIキーで実際に generateContent が使えるモデルを探す。
  * リクエストしたものと同じ名前は除く（それは今まさに失敗したモデルなので）。
- * 世代が新しいものほど優先し（古い世代は無料枠が減らされていることがある）、
- * 無料枠が厳しいpreview/exp系は他に選択肢が無いときだけ使う。
- * lite かどうかでは優先度を下げない（世代によっては lite の方が枠が広いこともある）
+ *
+ * Google AI Studio の「モデルごとのレート制限」で確認したところ、
+ * 世代の新しさよりも lite が付くモデルの方が無料枠（RPM）が広かった
+ * （出たばかりの世代はむしろ枠が狭いこともある）。そのため lite を最優先にし、
+ * 次に通常の flash、最後に preview/exp系の順で選ぶ
  */
 async function findFallbackModel(
   ai: GoogleGenAI,
@@ -217,12 +219,16 @@ async function findFallbackModel(
     const pool = safe.length > 0 ? safe : candidates;
 
     const byNewest = (a: string, b: string) => modelGeneration(b) - modelGeneration(a);
-    const flash = pool.filter((n) => /flash/i.test(n)).sort(byNewest);
+    const flash = pool.filter((n) => /flash/i.test(n) && !RISKY_QUOTA.test(n));
+    const flashLite = flash.filter((n) => /lite/i.test(n)).sort(byNewest);
+    const flashOther = flash.filter((n) => !/lite/i.test(n)).sort(byNewest);
+    const flashRisky = pool.filter((n) => /flash/i.test(n) && RISKY_QUOTA.test(n)).sort(byNewest);
     const pro = pool.filter((n) => /pro/i.test(n)).sort(byNewest);
 
     return (
-      flash.find((n) => !RISKY_QUOTA.test(n)) ??
-      flash[0] ??
+      flashLite[0] ??
+      flashOther[0] ??
+      flashRisky[0] ??
       pro.find((n) => !RISKY_QUOTA.test(n)) ??
       pro[0] ??
       pool[0] ??
