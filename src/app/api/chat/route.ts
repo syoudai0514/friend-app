@@ -80,6 +80,8 @@ export async function POST(req: Request) {
   };
 
   let stream: AsyncGenerator<{ text?: string }>;
+  // エラー文で「どのモデルが困っているか」を言えるように、実際に使ったモデル名を覚えておく
+  let usedModel = requestedModel;
   try {
     stream = await ai.models.generateContentStream({
       model: requestedModel,
@@ -92,6 +94,7 @@ export async function POST(req: Request) {
     if (isModelNotFound(e)) {
       const fallbackModel = await findFallbackModel(ai, requestedModel);
       if (fallbackModel) {
+        usedModel = fallbackModel;
         try {
           stream = await ai.models.generateContentStream({
             model: fallbackModel,
@@ -99,13 +102,13 @@ export async function POST(req: Request) {
             config: generationConfig,
           });
         } catch (e2) {
-          return errorStream(await friendlyError(e2, ai, requestedModel));
+          return errorStream(await friendlyError(e2, ai, requestedModel, usedModel));
         }
       } else {
-        return errorStream(await friendlyError(e, ai, requestedModel));
+        return errorStream(await friendlyError(e, ai, requestedModel, usedModel));
       }
     } else {
-      return errorStream(await friendlyError(e, ai, requestedModel));
+      return errorStream(await friendlyError(e, ai, requestedModel, usedModel));
     }
   }
 
@@ -127,7 +130,7 @@ export async function POST(req: Request) {
           );
         }
       } catch (e) {
-        controller.enqueue(encoder.encode(await friendlyError(e, ai, requestedModel)));
+        controller.enqueue(encoder.encode(await friendlyError(e, ai, requestedModel, usedModel)));
       } finally {
         controller.close();
       }
@@ -147,10 +150,17 @@ function isModelNotFound(e: unknown): boolean {
   return /404|NOT_FOUND|not found/i.test(msg);
 }
 
+// 画像/音声/埋め込み専用など、雑談の返信には使えないモデル
+const NOT_CHAT_MODEL = /embed|image|imagen|vision|audio|tts|veo|aqa|learnlm|native-audio|live/i;
+// preview/exp/thinking 系は無料枠が極端に少ないことがあるので、最後の手段にする
+const RISKY_QUOTA = /exp|preview|thinking/i;
+const IS_LITE = /lite/i;
+
 /**
  * このAPIキーで実際に generateContent が使えるモデルを探す。
- * 「flash」を含むものを優先し、リクエストしたものと同じ名前は除く
- * （それは今まさに失敗したモデルなので）
+ * リクエストしたものと同じ名前は除く（それは今まさに失敗したモデルなので）。
+ * 雑談向けの安定した flash モデルを優先し、無料枠が厳しいpreview/exp系は
+ * 他に選択肢が無いときだけ使う
  */
 async function findFallbackModel(
   ai: GoogleGenAI,
@@ -159,10 +169,16 @@ async function findFallbackModel(
   try {
     const names = await listUsableModelNames(ai);
     const candidates = names.filter((n) => n !== excludeModel);
+    const safe = candidates.filter((n) => !NOT_CHAT_MODEL.test(n));
+    // 全部が画像/音声系だった場合の保険として、除外前の一覧にも戻れるようにする
+    const pool = safe.length > 0 ? safe : candidates;
+
     return (
-      candidates.find((n) => n.includes("flash") && !n.includes("lite")) ??
-      candidates.find((n) => n.includes("flash")) ??
-      candidates[0] ??
+      pool.find((n) => /flash/i.test(n) && !RISKY_QUOTA.test(n) && !IS_LITE.test(n)) ??
+      pool.find((n) => /flash/i.test(n) && !RISKY_QUOTA.test(n)) ??
+      pool.find((n) => /flash/i.test(n)) ??
+      pool.find((n) => /pro/i.test(n) && !RISKY_QUOTA.test(n)) ??
+      pool[0] ??
       null
     );
   } catch {
@@ -182,11 +198,18 @@ async function listUsableModelNames(ai: GoogleGenAI): Promise<string[]> {
 }
 
 /** Gemini のエラーをキャラが困っている風の日本語に変換する */
-async function friendlyError(e: unknown, ai: GoogleGenAI, requestedModel: string): Promise<string> {
+async function friendlyError(
+  e: unknown,
+  ai: GoogleGenAI,
+  requestedModel: string,
+  usedModel: string,
+): Promise<string> {
   const msg = e instanceof Error ? e.message : String(e);
+  // フォールバック先を使っていたときは、どのモデルの話かが分かるようにする
+  const modelNote = usedModel !== requestedModel ? `（${usedModel} で）` : "";
 
   if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg)) {
-    return "（無料枠の上限に届いちゃったみたい。少し時間をおいてから、もう一度話しかけてね）";
+    return `（無料枠の上限に届いちゃったみたい${modelNote}。少し時間をおいてから、もう一度話しかけてね）`;
   }
   if (/401|403|API key|PERMISSION_DENIED|UNAUTHENTICATED/i.test(msg)) {
     return "（APIキーが正しくないみたい。Google AI Studio で発行したキーを .env.local に入れ直してね）";
