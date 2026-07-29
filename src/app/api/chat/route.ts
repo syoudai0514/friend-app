@@ -149,7 +149,9 @@ export async function POST(req: Request) {
 
 function isModelNotFound(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
-  return /404|NOT_FOUND|not found/i.test(msg);
+  // 存在しないエイリアスは 404 ではなく 400 INVALID_ARGUMENT で返ってくることがあるので、
+  // モデル名絡みっぽいエラーは広めに拾ってフォールバックへ回す
+  return /404|NOT_FOUND|not found|400|INVALID_ARGUMENT/i.test(msg) && /model/i.test(msg);
 }
 
 // 画像/音声/埋め込み専用など、雑談の返信には使えないモデル
@@ -227,7 +229,7 @@ async function friendlyError(
   if (/401|403|API key|PERMISSION_DENIED|UNAUTHENTICATED/i.test(msg)) {
     return "（APIキーが正しくないみたい。Google AI Studio で発行したキーを .env.local に入れ直してね）";
   }
-  if (/404|NOT_FOUND|not found/i.test(msg)) {
+  if (isModelNotFound(e)) {
     const names = await listUsableModelNames(ai).catch(() => []);
     const hint =
       names.length > 0
@@ -238,5 +240,8 @@ async function friendlyError(
   if (/SAFETY|blocked/i.test(msg)) {
     return "……ごめん、その話はうまく返せなさそう。ほかのこと話そ？";
   }
-  return "（うまく繋がらなかったみたい。少しだけ待ってから、もう一度送ってみて）";
+  // ここに来るのは想定外のエラーなので、次に同じ状況になったときすぐ分かるよう
+  // 元のエラーメッセージの先頭部分だけ添えておく
+  const detail = msg.slice(0, 140).replace(/\s+/g, " ").trim();
+  return `（うまく繋がらなかったみたい。少しだけ待ってから、もう一度送ってみて）\n[${detail}]`;
 }
