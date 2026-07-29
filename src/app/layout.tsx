@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { LockGate } from "@/components/LockGate";
 import { AssetProvider } from "@/lib/assets";
+import { LockProvider } from "@/lib/lock";
 import { AppStateProvider } from "@/lib/store";
 import "./globals.css";
 
@@ -33,14 +35,16 @@ export default function RootLayout({
   return (
     <html lang="ja" className="h-full">
       <body className="h-full antialiased">
-        <AppStateProvider>
-          <AssetProvider>
-          {/* スマホ想定。PCでは中央に寄せて縦長の画面として見せる */}
-          <div className="mx-auto flex h-full w-full max-w-[480px] flex-col overflow-hidden bg-black shadow-2xl">
-            {children}
-          </div>
-          </AssetProvider>
-        </AppStateProvider>
+        <LockProvider>
+          <AppStateProvider>
+            <AssetProvider>
+              {/* スマホ想定。PCでは中央に寄せて縦長の画面として見せる */}
+              <div className="mx-auto flex h-full w-full max-w-[480px] flex-col overflow-hidden bg-black shadow-2xl">
+                <LockGate>{children}</LockGate>
+              </div>
+            </AssetProvider>
+          </AppStateProvider>
+        </LockProvider>
       </body>
     </html>
   );

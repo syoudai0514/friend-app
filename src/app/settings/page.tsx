@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { BackButton } from "@/components/ui";
 import { AFFECTION_LEVELS, affectionLevel } from "@/lib/catalog";
+import { useLock } from "@/lib/lock";
 import { useStore } from "@/lib/store";
+import { biometricSupported, hashPasscode, registerBiometric } from "@/lib/webauthn";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -19,6 +21,128 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 const inputClass =
   "w-full rounded-xl border border-[#dfe2ea] bg-white px-3.5 py-2.5 text-[15px] " +
   "text-[#2b2b33] outline-none focus:border-pink-cta";
+
+const outlineButtonClass =
+  "w-full rounded-xl border border-[#dfe2ea] py-2.5 text-[13px] font-bold text-[#2b2b33]";
+
+/** 端末ロック（Face ID・指紋・パスコード）の設定 */
+function LockSection() {
+  const { lock, setLock, clearBiometric, clearPasscode } = useLock();
+  const supported = biometricSupported();
+
+  const [bioBusy, setBioBusy] = useState(false);
+  const [bioError, setBioError] = useState("");
+
+  const [passInput, setPassInput] = useState("");
+  const [passConfirm, setPassConfirm] = useState("");
+  const [passError, setPassError] = useState("");
+
+  const setupBiometric = async () => {
+    setBioError("");
+    setBioBusy(true);
+    try {
+      const id = await registerBiometric();
+      setLock({ biometricCredentialId: id, enabled: true });
+    } catch {
+      setBioError("設定できませんでした。この端末では使えないかもしれません");
+    } finally {
+      setBioBusy(false);
+    }
+  };
+
+  const setupPasscode = async () => {
+    setPassError("");
+    if (passInput.length < 4) {
+      setPassError("4文字以上にしてください");
+      return;
+    }
+    if (passInput !== passConfirm) {
+      setPassError("確認用と一致しません");
+      return;
+    }
+    setLock({ passcodeHash: await hashPasscode(passInput), enabled: true });
+    setPassInput("");
+    setPassConfirm("");
+  };
+
+  return (
+    <section className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
+      <h2 className="text-[14px] font-bold text-[#2b2b33]">端末ロック</h2>
+      <p className="text-[11px] leading-relaxed text-[#9a9aa8]">
+        設定すると、アプリを開くたびにFace ID・指紋・パスコードのどれかで認証が必要になります。
+      </p>
+
+      {lock.enabled && (
+        <div className="flex items-center justify-between rounded-xl bg-[#f0fbf4] px-3.5 py-2.5 text-[12px] text-[#2f8a5c]">
+          <span>いまロック中です</span>
+          <button
+            onClick={() => setLock({ enabled: false })}
+            className="font-bold text-[#d9536a]"
+          >
+            止める
+          </button>
+        </div>
+      )}
+
+      <div className="space-y-2 border-t border-[#eceaf0] pt-3">
+        <p className="text-[12px] font-bold text-[#5c5c6b]">Face ID・指紋</p>
+        {!supported ? (
+          <p className="text-[11px] text-[#9a9aa8]">この端末・ブラウザでは使えないみたいです</p>
+        ) : lock.biometricCredentialId ? (
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] text-[#2b2b33]">設定済み</span>
+            <button onClick={clearBiometric} className="text-[12px] font-bold text-[#d9536a]">
+              解除する
+            </button>
+          </div>
+        ) : (
+          <button onClick={setupBiometric} disabled={bioBusy} className={outlineButtonClass}>
+            {bioBusy ? "設定中…" : "Face ID・指紋を設定する"}
+          </button>
+        )}
+        {bioError && <p className="text-[11px] text-[#d9536a]">{bioError}</p>}
+      </div>
+
+      <div className="space-y-2 border-t border-[#eceaf0] pt-3">
+        <p className="text-[12px] font-bold text-[#5c5c6b]">パスコード</p>
+        {lock.passcodeHash ? (
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] text-[#2b2b33]">設定済み</span>
+            <button onClick={clearPasscode} className="text-[12px] font-bold text-[#d9536a]">
+              解除する
+            </button>
+          </div>
+        ) : (
+          <>
+            <input
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="4文字以上のパスコード"
+              value={passInput}
+              onChange={(e) => setPassInput(e.target.value)}
+              className={inputClass}
+            />
+            <input
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="確認のためもう一度"
+              value={passConfirm}
+              onChange={(e) => setPassConfirm(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && setupPasscode()}
+              className={inputClass}
+            />
+            <button onClick={setupPasscode} className={outlineButtonClass}>
+              パスコードを設定する
+            </button>
+            {passError && <p className="text-[11px] text-[#d9536a]">{passError}</p>}
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -155,6 +279,9 @@ export default function SettingsPage() {
             ))}
           </ul>
         </section>
+
+        {/* ------------------------------ 端末ロック ------------------------------ */}
+        <LockSection />
 
         {/* ------------------------------ その他 ------------------------------ */}
         <section className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
