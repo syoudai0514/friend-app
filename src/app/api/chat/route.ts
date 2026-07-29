@@ -12,6 +12,10 @@ import type { ChatMessage, Look, Persona } from "@/lib/types";
 export const runtime = "nodejs";
 /** 会話は毎回生成するのでキャッシュさせない */
 export const dynamic = "force-dynamic";
+// フォールバックでモデルを探し直したり、応答が長めになったりすると
+// 既定の実行時間では途中で打ち切られることがあるため延ばしておく
+// （Vercel Hobbyプランでの上限）
+export const maxDuration = 60;
 
 /** 無料枠を使い切らないよう、送る履歴は直近だけに絞る */
 const MAX_HISTORY = 24;
