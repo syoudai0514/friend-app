@@ -90,6 +90,8 @@ export const OUTFIT: PartOption[] = [
   { id: "knit", name: "ニット", rarity: "NR" },
   { id: "yukata", name: "浴衣", rarity: "SSR" },
   { id: "camisole", name: "キャミソール", rarity: "NR" },
+  { id: "beachcover", name: "ビーチカバーアップ", rarity: "SSR" },
+  { id: "mermaid", name: "マーメイドドレス", rarity: "SSR" },
 ];
 
 export const HEAD_ACC: PartOption[] = [

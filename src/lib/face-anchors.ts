@@ -40,6 +40,24 @@ export const PHOTO_ANCHORS: Record<string, FaceAnchor> = {
   "hinata/blazer": {
     eyeY: 0.1356, headX: 0.5, cheekDX: 0.1069, cheekY: 0.1686, markDX: 0.4381, markY: 0.0906,
   },
+  "aimi/sailor": {
+    eyeY: 0.1214, headX: 0.5988, cheekDX: 0.1613, cheekY: 0.1544, markDX: 0.58, markY: 0.0764,
+  },
+  "aimi/hoodie": {
+    eyeY: 0.1213, headX: 0.5047, cheekDX: 0.1738, cheekY: 0.1543, markDX: 0.58, markY: 0.0763,
+  },
+  "aimi/beachcover": {
+    eyeY: 0.1218, headX: 0.509, cheekDX: 0.1671, cheekY: 0.1548, markDX: 0.58, markY: 0.0768,
+  },
+  "aimi/mermaid": {
+    eyeY: 0.1236, headX: 0.5365, cheekDX: 0.0652, cheekY: 0.1566, markDX: 0.2714, markY: 0.0786,
+  },
+  "aimi/suit": {
+    eyeY: 0.1329, headX: 0.4684, cheekDX: 0.1729, cheekY: 0.1659, markDX: 0.58, markY: 0.0879,
+  },
+  "aimi/roomwear": {
+    eyeY: 0.1314, headX: 0.4848, cheekDX: 0.0952, cheekY: 0.1644, markDX: 0.4086, markY: 0.0864,
+  },
 };
 
 /** 目印を持っていない立ち絵のための当たり。だいたいの位置には乗る */
