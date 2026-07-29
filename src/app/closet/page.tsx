@@ -94,7 +94,7 @@ export default function ClosetPage() {
           className="absolute inset-0 h-full w-full"
         />
 
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
+        <div className="safe-top absolute inset-x-0 top-0 flex items-start justify-between px-3 pb-3">
           <button
             onClick={() => router.push("/")}
             className="grid h-11 w-11 place-items-center rounded-full bg-white/92 text-[19px]

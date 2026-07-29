@@ -120,7 +120,7 @@ export default function ChatPage() {
       talking={busy}
     >
       {/* 上部 */}
-      <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between p-3">
+      <div className="safe-top absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 pb-3">
         <div className="flex items-center gap-2">
           <BackButton />
           <AffectionGauge affection={state.affection} />
@@ -140,7 +140,7 @@ export default function ChatPage() {
       {/* 会話ログ */}
       <div
         ref={listRef}
-        className="no-scrollbar absolute inset-x-0 top-[68px] bottom-[76px] z-10 flex flex-col
+        className="safe-chat-log no-scrollbar absolute inset-x-0 bottom-[76px] z-10 flex flex-col
                    overflow-y-auto px-3 pb-2"
       >
         {/* 少ないうちは下寄せ。増えたら普通に上から流れる */}

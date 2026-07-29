@@ -80,7 +80,7 @@ export function SideMenu({
   items: { href: string; icon: string; label: string; accent?: boolean }[];
 }) {
   return (
-    <nav className="absolute top-16 right-2 flex flex-col gap-2.5">
+    <nav className="safe-side-menu absolute right-2 flex flex-col gap-2.5">
       {items.map((it) => (
         <Link
           key={it.href}

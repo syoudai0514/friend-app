@@ -27,6 +27,23 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* PWAとしてホーム画面から開いたとき、ノッチ/ステータスバーの下に
+   ボタンが隠れて押せなくなるのを防ぐ。数値のiPhone実機分は最低でも確保する */
+.safe-top {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+/* 右側の縦メニューは上部バーのすぐ下に来る想定の固定値だったので、
+   上部バーが safe-top ぶん下がったのに合わせて同じだけ下げる */
+.safe-side-menu {
+  top: calc(max(0.75rem, env(safe-area-inset-top)) + 3.25rem);
+}
+
+/* トーク画面の会話ログも、上部バーの高さに合わせて開始位置を下げる */
+.safe-chat-log {
+  top: calc(max(0.75rem, env(safe-area-inset-top)) + 3.5rem);
+}
+
 /* ---------------------------------------------------------------- */
 /*  参考アプリ風のパーツ                                             */
 /* ---------------------------------------------------------------- */

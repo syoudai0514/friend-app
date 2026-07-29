@@ -86,7 +86,7 @@ export default function Home() {
   return (
     <Stage look={state.look} personaId={state.persona.id} lift={56}>
       {/* 上部 */}
-      <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
+      <div className="safe-top absolute inset-x-0 top-0 flex items-start justify-between px-3 pb-3">
         <AffectionGauge affection={state.affection} />
         <Link
           href="/settings"

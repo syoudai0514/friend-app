@@ -30,7 +30,7 @@ export default function CharactersPage() {
 
   return (
     <div className="flex h-full flex-col bg-[#f6f7fa]">
-      <header className="flex items-center gap-3 bg-white px-3 py-3 shadow-sm">
+      <header className="safe-top flex items-center gap-3 bg-white px-3 pb-3 shadow-sm">
         <BackButton />
         <h1 className="text-[17px] font-bold text-[#2b2b33]">キャラをえらぶ</h1>
       </header>
