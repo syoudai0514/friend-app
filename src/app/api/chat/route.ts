@@ -26,6 +26,7 @@ interface ChatRequest {
   userName: string;
   affection: number;
   look: Look;
+  memories?: string[];
 }
 
 function errorStream(message: string): Response {
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     return errorStream("（メッセージをうまく読み取れませんでした）");
   }
 
-  const { messages, persona, userName, affection, look } = body;
+  const { messages, persona, userName, affection, look, memories } = body;
   if (!Array.isArray(messages) || !persona || !look) {
     return errorStream("（メッセージをうまく読み取れませんでした）");
   }
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
   const requestedModel = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 
   const generationConfig: GenerateContentConfig = {
-    systemInstruction: buildSystemInstruction({ persona, userName, affection, look }),
+    systemInstruction: buildSystemInstruction({ persona, userName, affection, look, memories }),
     temperature: 1.05,
     topP: 0.95,
     // thinkingConfigを付けたモデルで、見えない思考トークンだけで

@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AffectionGauge, BackButton, Dots, Stage } from "@/components/ui";
 import { isTagIncomplete, splitExpression, type Expression } from "@/lib/expressions";
+import { splitMemory } from "@/lib/memory";
 import { PENDING_KEY } from "@/app/page";
 import { idleLine } from "@/lib/prompt";
 import { useStore } from "@/lib/store";
 import type { ChatMessage } from "@/lib/types";
 
 export default function ChatPage() {
-  const { state, ready, addMessage, replaceLastModel, gainAffection, clearMessages } = useStore();
+  const { state, ready, addMessage, replaceLastModel, gainAffection, addMemory, clearMessages } =
+    useStore();
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [expression, setExpression] = useState<Expression>("normal");
@@ -48,6 +50,7 @@ export default function ChatPage() {
           userName: state.userName,
           affection: state.affection,
           look: state.look,
+          memories: state.memories,
         }),
       });
 
@@ -63,17 +66,20 @@ export default function ChatPage() {
         const { done, value } = await reader.read();
         if (done) break;
         acc += decoder.decode(value, { stream: true });
-        // 先頭のタグを読み取って表情を切り替え、本文だけを吹き出しに出す。
-        // タグが途中までしか届いていないときは、出しかけの `[ha` が
-        // 見えないように表示を待つ
-        const { expression: ex, body } = splitExpression(acc);
+        // 先頭の表情タグ・末尾の記憶タグを読み取って、本文だけを吹き出しに出す。
+        // タグが途中までしか届いていないときは、出しかけの `[ha` や
+        // `[memory: ...` が見えないように表示を待つ
+        const { expression: ex, body: afterExpression } = splitExpression(acc);
+        const { body } = splitMemory(afterExpression);
         setExpression(ex);
         if (!isTagIncomplete(acc)) replaceLastModel(body);
       }
       acc += decoder.decode();
       const final = splitExpression(acc);
+      const memory = splitMemory(final.body);
       setExpression(final.expression);
-      replaceLastModel(final.body);
+      replaceLastModel(memory.body);
+      if (memory.learned) addMemory(memory.learned);
 
       // 会話が成立したら好感度が上がる
       if (res.headers.get("X-Chat-Error") !== "1") gainAffection(1);
@@ -84,7 +90,7 @@ export default function ChatPage() {
     }
     },
     [busy, state.messages, state.persona, state.userName, state.affection, state.look,
-     addMessage, replaceLastModel, gainAffection],
+     state.memories, addMessage, replaceLastModel, gainAffection, addMemory],
   );
 
   // ホームの入力欄から来たときは、その言葉を開いてすぐ送る

@@ -16,6 +16,9 @@ import type { AppState, ChatMessage, Look, Persona } from "./types";
 
 const STORAGE_KEY = "friend-app:v1";
 
+/** 覚えておく要点は増えすぎないよう、直近のものだけ残す */
+const MAX_MEMORIES = 40;
+
 const INITIAL: AppState = {
   onboarded: false,
   userName: "あなた",
@@ -23,10 +26,11 @@ const INITIAL: AppState = {
   look: DEFAULT_LOOK,
   affection: 0,
   messages: [],
+  memories: [],
 };
 
-/** 保存済みデータに欠けたキーがあっても壊れないようにする */
-function reconcile(saved: unknown): AppState {
+/** 保存済みデータに欠けたキーがあっても壊れないようにする。エクスポートしたJSONの読み込みにも使う */
+export function reconcile(saved: unknown): AppState {
   if (!saved || typeof saved !== "object") return INITIAL;
   const s = saved as Partial<AppState>;
   return {
@@ -36,6 +40,7 @@ function reconcile(saved: unknown): AppState {
     look: { ...DEFAULT_LOOK, ...(s.look ?? {}) } as Look,
     affection: typeof s.affection === "number" ? s.affection : 0,
     messages: Array.isArray(s.messages) ? (s.messages as ChatMessage[]) : [],
+    memories: Array.isArray(s.memories) ? s.memories.filter((m) => typeof m === "string") : [],
   };
 }
 
@@ -50,6 +55,10 @@ interface StoreValue {
   /** 直近の model メッセージを置き換える（ストリーミング用） */
   replaceLastModel: (text: string) => void;
   gainAffection: (n: number) => void;
+  /** 会話から覚えた要点を1つ追加する。増えすぎたら古いものから消える */
+  addMemory: (text: string) => void;
+  /** 覚えた要点を1つ消す */
+  removeMemory: (index: number) => void;
   applyPreset: (presetId: string) => void;
   clearMessages: () => void;
   resetAll: () => void;
@@ -123,6 +132,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, affection: s.affection + n }));
   }, []);
 
+  const addMemory = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setState((s) => {
+      // 同じ内容の覚え直しで無限に増えないようにする
+      const rest = s.memories.filter((m) => m !== trimmed);
+      const memories = [...rest, trimmed].slice(-MAX_MEMORIES);
+      return { ...s, memories };
+    });
+  }, []);
+
+  const removeMemory = useCallback((index: number) => {
+    setState((s) => ({ ...s, memories: s.memories.filter((_, i) => i !== index) }));
+  }, []);
+
   const applyPreset = useCallback((presetId: string) => {
     const preset = PRESETS.find((p) => p.persona.id === presetId);
     if (!preset) return;
@@ -152,6 +176,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       addMessage,
       replaceLastModel,
       gainAffection,
+      addMemory,
+      removeMemory,
       applyPreset,
       clearMessages,
       resetAll,
@@ -165,6 +191,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       addMessage,
       replaceLastModel,
       gainAffection,
+      addMemory,
+      removeMemory,
       applyPreset,
       clearMessages,
       resetAll,

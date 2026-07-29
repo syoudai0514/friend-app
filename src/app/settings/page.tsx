@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { BackButton } from "@/components/ui";
 import { AFFECTION_LEVELS, affectionLevel } from "@/lib/catalog";
 import { useLock } from "@/lib/lock";
-import { useStore } from "@/lib/store";
+import { reconcile, useStore } from "@/lib/store";
 import { biometricSupported, hashPasscode, registerBiometric } from "@/lib/webauthn";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
@@ -146,12 +146,40 @@ function LockSection() {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { state, ready, update, setPersona, resetAll } = useStore();
+  const { state, ready, update, setPersona, removeMemory, resetAll } = useStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importError, setImportError] = useState("");
 
   if (!ready) return <div className="flex-1 bg-[#12121a]" />;
 
   const level = affectionLevel(state.affection);
   const p = state.persona;
+
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `koibito-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const triggerImport = () => fileInputRef.current?.click();
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // 同じファイルを選び直しても発火するように
+    if (!file) return;
+    setImportError("");
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!confirm("いまのデータを上書きして読み込みます。よろしいですか？")) return;
+      update(reconcile(parsed));
+    } catch {
+      setImportError("読み込めませんでした。ファイルの形式を確認してください");
+    }
+  };
 
   return (
     <div className="flex h-full flex-col bg-[#f6f7fa]">
@@ -280,6 +308,42 @@ export default function SettingsPage() {
           </ul>
         </section>
 
+        {/* ------------------------------ 覚えていること ------------------------------ */}
+        <section className="space-y-2 rounded-2xl bg-white p-4 shadow-sm">
+          <h2 className="text-[14px] font-bold text-[#2b2b33]">覚えていること</h2>
+          <p className="text-[11px] leading-relaxed text-[#9a9aa8]">
+            会話の中で好きなもの・約束したことなどが出てくると、ここに自動で増えていきます。
+            次の会話で参考にされます。
+          </p>
+          {state.memories.length === 0 ? (
+            <p className="rounded-xl bg-[#f6f7fa] px-3.5 py-2.5 text-[12px] text-[#9a9aa8]">
+              まだ何もありません
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {state.memories
+                .map((m, i) => ({ text: m, index: i }))
+                .reverse()
+                .map(({ text, index }) => (
+                  <li
+                    key={index}
+                    className="flex items-start justify-between gap-2 rounded-xl bg-[#f6f7fa]
+                               px-3.5 py-2.5 text-[12px] leading-relaxed text-[#4a4a5a]"
+                  >
+                    <span className="flex-1">{text}</span>
+                    <button
+                      onClick={() => removeMemory(index)}
+                      className="shrink-0 text-[11px] font-bold text-[#c0c0cc]"
+                      aria-label="この記憶を消す"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </section>
+
         {/* ------------------------------ 端末ロック ------------------------------ */}
         <LockSection />
 
@@ -287,9 +351,31 @@ export default function SettingsPage() {
         <section className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="text-[14px] font-bold text-[#2b2b33]">データ</h2>
           <p className="text-[11px] leading-relaxed text-[#9a9aa8]">
-            会話・見た目・好感度はすべてこの端末のブラウザにだけ保存されます。
+            会話・見た目・好感度・覚えていることはすべてこの端末のブラウザにだけ保存されます。
             サーバーには残りません。
           </p>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <button onClick={exportData} className={outlineButtonClass}>
+              エクスポート
+            </button>
+            <button onClick={triggerImport} className={outlineButtonClass}>
+              インポート
+            </button>
+          </div>
+          <p className="text-[11px] leading-relaxed text-[#9a9aa8]">
+            性格・口調・覚えていることなどをファイルに書き出したり、
+            そのファイルから読み込んで他の端末に移したりできます。
+          </p>
+          {importError && <p className="text-[11px] text-[#d9536a]">{importError}</p>}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            onChange={handleImportFile}
+            className="hidden"
+          />
+
           <button
             onClick={() => {
               if (confirm("すべてのデータを消して最初からやり直しますか？")) {

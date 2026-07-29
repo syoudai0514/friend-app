@@ -72,6 +72,8 @@ export interface AppState {
   /** 好感度。会話するたびに増える */
   affection: number;
   messages: ChatMessage[];
+  /** 会話から覚えた要点（好きなもの・約束など）。短い文の一覧 */
+  memories: string[];
 }
 
 /** 好感度レベル。会話のトーンが段階的に変わる */
