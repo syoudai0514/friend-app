@@ -34,7 +34,7 @@ button {
 /* 右側の丸いメニューボタン */
 .menu-btn {
   @apply flex h-[52px] w-[52px] flex-col items-center justify-center rounded-full
-         bg-white/95 text-[9px] font-bold text-[#3a3f52] shadow-[0_2px_8px_rgba(0,0,0,.28)]
+         bg-white/95 text-[8.5px] font-bold text-[#3a3f52] shadow-[0_2px_8px_rgba(0,0,0,.28)]
          transition active:scale-90;
 }
 

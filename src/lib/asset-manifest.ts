@@ -1,0 +1,33 @@
+// このファイルは自動生成されています。直接編集しないでください。
+// 生成元: scripts/generate-asset-manifest.mjs（npm run dev / build の前に走ります）
+//
+// public/ に画像を足したら、開発サーバーを立て直すか
+// `node scripts/generate-asset-manifest.mjs` を実行すると更新されます。
+import type { AssetManifest } from "./asset-types";
+
+export const BUILT_IN_ASSETS: AssetManifest = {
+  "characters": {
+    "aimi": {
+      "beachcover": "/characters/aimi/beachcover.png",
+      "hoodie": "/characters/aimi/hoodie.png",
+      "hoodie@happy": "/characters/aimi/hoodie%40happy.png",
+      "hoodie@shy": "/characters/aimi/hoodie%40shy.png",
+      "mermaid": "/characters/aimi/mermaid.png",
+      "mermaid@happy": "/characters/aimi/mermaid%40happy.png",
+      "roomwear": "/characters/aimi/roomwear.png",
+      "sailor": "/characters/aimi/sailor.png",
+      "suit": "/characters/aimi/suit.png",
+      "swimsuit": "/characters/aimi/swimsuit.png"
+    },
+    "hinata": {
+      "blazer": "/characters/hinata/blazer.png"
+    },
+    "nagi": {
+      "street": "/characters/nagi/street.png"
+    },
+    "rena": {
+      "suit": "/characters/rena/suit.png"
+    }
+  },
+  "backgrounds": {}
+};

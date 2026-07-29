@@ -8,9 +8,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AssetManifest } from "@/app/api/assets/route";
+import { BUILT_IN_ASSETS } from "@/lib/asset-manifest";
+import type { AssetManifest } from "@/lib/asset-types";
 
-const EMPTY: AssetManifest = { characters: {}, backgrounds: {} };
+/** 中身のある一覧かどうか */
+function hasCharacters(m: AssetManifest | null | undefined): m is AssetManifest {
+  return !!m && Object.keys(m.characters ?? {}).length > 0;
+}
 
 interface AssetValue {
   /**
@@ -27,14 +31,18 @@ interface AssetValue {
 const AssetContext = createContext<AssetValue | null>(null);
 
 export function AssetProvider({ children }: { children: ReactNode }) {
-  const [manifest, setManifest] = useState<AssetManifest>(EMPTY);
+  // ビルド時に作った一覧を最初から持っておく。
+  // これだけで立ち絵は出るので、通信が失敗しても絵が消えない
+  const [manifest, setManifest] = useState<AssetManifest>(BUILT_IN_ASSETS);
 
   useEffect(() => {
     let alive = true;
+    // 開発中に画像を足したときは、こちらが拾って即座に反映される。
+    // 中身が取れなかったときはビルド時の一覧をそのまま使う
     fetch("/api/assets")
-      .then((r) => (r.ok ? r.json() : EMPTY))
-      .then((m: AssetManifest) => {
-        if (alive) setManifest(m ?? EMPTY);
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m: AssetManifest | null) => {
+        if (alive && hasCharacters(m)) setManifest(m);
       })
       .catch(() => {
         // 画像が無くてもSVGで動くので、失敗しても黙って進む

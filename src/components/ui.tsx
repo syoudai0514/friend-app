@@ -88,7 +88,10 @@ export function SideMenu({
           className={`menu-btn ${it.accent ? "menu-btn-accent" : ""}`}
         >
           <span className="text-[17px] leading-none">{it.icon}</span>
-          <span className="mt-0.5 leading-none">{it.label}</span>
+          {/* 「クローゼット」のような長いラベルでも丸の中で折り返さないように */}
+          <span className="mt-0.5 leading-none tracking-[-.04em] whitespace-nowrap">
+            {it.label}
+          </span>
         </Link>
       ))}
     </nav>
