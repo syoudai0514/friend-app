@@ -64,9 +64,10 @@ export async function POST(req: Request) {
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  // Google が新しい世代を出しても追従できるよう、まずは常に最新を指すエイリアスを試す。
-  // それも無ければ 404 になり、下の自動フォールバックが本当に使えるモデルを探しにいく
-  const requestedModel = process.env.GEMINI_MODEL || "gemini-flash-latest";
+  // "-latest" エイリアスは裏で何に解決されるか分からず、指示への追従が弱い
+  // モデルに当たることがあったため、素性のはっきりした固定モデルに戻す。
+  // これが無ければ下の自動フォールバックが本当に使えるモデルを探しにいく
+  const requestedModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
   const generationConfig: GenerateContentConfig = {
     systemInstruction: buildSystemInstruction({ persona, userName, affection, look }),
