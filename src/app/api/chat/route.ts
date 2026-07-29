@@ -77,13 +77,11 @@ export async function POST(req: Request) {
     systemInstruction: buildSystemInstruction({ persona, userName, affection, look }),
     temperature: 1.05,
     topP: 0.95,
-    // thinkingConfig を外して再試行したモデルは、見えない思考トークンも
-    // この上限を分け合って消費するらしく、400だと本文が出る前に尽きて
-    // 「ウチは甘」のように文の途中で切れてしまった。多めに確保しておく
+    // thinkingConfigを付けたモデルで、見えない思考トークンだけで
+    // この上限を使い切ってしまい、本文が丸ごと空になったり文の途中で
+    // 切れたりする不具合が何度も起きた。モデルによって挙動がまちまちで
+    // 信用できないため、thinkingConfigは付けず、代わりに上限を多めに確保する
     maxOutputTokens: 1024,
-    // 雑談に思考トークンは要らない。無料枠の節約と応答速度のため切る
-    // （モデルによっては受け付けず400になるので、その場合は startStream 内で外す）
-    thinkingConfig: { thinkingBudget: 0 },
     safetySettings: [
       HarmCategory.HARM_CATEGORY_HARASSMENT,
       HarmCategory.HARM_CATEGORY_HATE_SPEECH,
@@ -120,22 +118,24 @@ export async function POST(req: Request) {
   const encoder = new TextEncoder();
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
-      let sent = 0;
-      let finishReason: string | undefined;
       try {
-        for await (const chunk of stream) {
-          const text = chunk.text;
-          if (text) {
-            sent += text.length;
-            controller.enqueue(encoder.encode(text));
+        let result = await relay(stream, controller, encoder);
+        if (result.sent === 0) {
+          // モデルが本文を1文字も返さないことがある（理由ははっきりしないが、
+          // 見えない思考トークンだけで枠を使い切ったり、たまたま空だったりする）。
+          // 同じ内容でもう一度だけ聞き直してみる
+          try {
+            const retryStream = await startStream(ai, usedModel, contents, generationConfig);
+            result = await relay(retryStream, controller, encoder);
+          } catch {
+            // 聞き直しがエラーになっても、下の空チェックに任せる
           }
-          finishReason = chunk.candidates?.[0]?.finishReason ?? finishReason;
         }
-        if (sent === 0) {
+        if (result.sent === 0) {
           controller.enqueue(
             encoder.encode("……ごめん、今ちょっとうまく言葉が出てこなかった。もう一回言ってくれる？"),
           );
-        } else if (finishReason === "MAX_TOKENS") {
+        } else if (result.finishReason === "MAX_TOKENS") {
           // 上限に届いて文の途中で切れたとき、切れたまま出さない
           controller.enqueue(encoder.encode("……"));
         }
@@ -153,6 +153,25 @@ export async function POST(req: Request) {
       "Cache-Control": "no-store",
     },
   });
+}
+
+/** ストリームの本文をそのままクライアントへ送りつつ、送った量と終了理由を返す */
+async function relay(
+  stream: AsyncGenerator<GenerateContentResponse>,
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+): Promise<{ sent: number; finishReason: string | undefined }> {
+  let sent = 0;
+  let finishReason: string | undefined;
+  for await (const chunk of stream) {
+    const text = chunk.text;
+    if (text) {
+      sent += text.length;
+      controller.enqueue(encoder.encode(text));
+    }
+    finishReason = chunk.candidates?.[0]?.finishReason ?? finishReason;
+  }
+  return { sent, finishReason };
 }
 
 function isModelNotFound(e: unknown): boolean {
