@@ -84,7 +84,7 @@ export default function Home() {
 
   /* ----------------------------- ホーム ----------------------------- */
   return (
-    <Stage look={state.look} personaId={state.persona.id}>
+    <Stage look={state.look} personaId={state.persona.id} lift={56}>
       {/* 上部 */}
       <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
         <AffectionGauge affection={state.affection} />

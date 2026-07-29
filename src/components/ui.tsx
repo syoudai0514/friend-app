@@ -16,6 +16,7 @@ export function Stage({
   dim = 0,
   expression = "normal",
   talking = false,
+  lift = 0,
 }: {
   look: Look;
   personaId: string;
@@ -23,17 +24,22 @@ export function Stage({
   dim?: number;
   expression?: Expression;
   talking?: boolean;
+  /** 立ち絵を下から持ち上げる量(px)。下の帯に脚が隠れすぎるのを防ぐ */
+  lift?: number;
 }) {
   return (
     <div className="relative flex-1 overflow-hidden">
       <Scene id={look.scene} blur={1} />
-      <CharacterArt
-        look={look}
-        personaId={personaId}
-        className="absolute inset-0 h-full w-full"
-        expression={expression}
-        talking={talking}
-      />
+      {/* 持ち上げると全体が少し小さくなるかわりに、ふくらはぎまで見えるようになる */}
+      <div className="absolute inset-0" style={{ bottom: lift }}>
+        <CharacterArt
+          look={look}
+          personaId={personaId}
+          className="h-full w-full"
+          expression={expression}
+          talking={talking}
+        />
+      </div>
       {dim > 0 && (
         <div className="absolute inset-0 bg-black" style={{ opacity: dim }} />
       )}
