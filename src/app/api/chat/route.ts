@@ -3,6 +3,8 @@ import {
   HarmBlockThreshold,
   HarmCategory,
   type Content,
+  type GenerateContentConfig,
+  type GenerateContentResponse,
 } from "@google/genai";
 import { buildSystemInstruction } from "@/lib/prompt";
 import type { ChatMessage, Look, Persona } from "@/lib/types";
@@ -66,12 +68,13 @@ export async function POST(req: Request) {
   // それも無ければ 404 になり、下の自動フォールバックが本当に使えるモデルを探しにいく
   const requestedModel = process.env.GEMINI_MODEL || "gemini-flash-latest";
 
-  const generationConfig = {
+  const generationConfig: GenerateContentConfig = {
     systemInstruction: buildSystemInstruction({ persona, userName, affection, look }),
     temperature: 1.05,
     topP: 0.95,
     maxOutputTokens: 400,
     // 雑談に思考トークンは要らない。無料枠の節約と応答速度のため切る
+    // （モデルによっては受け付けず400になるので、その場合は startStream 内で外す）
     thinkingConfig: { thinkingBudget: 0 },
     safetySettings: [
       HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -85,11 +88,7 @@ export async function POST(req: Request) {
   // エラー文で「どのモデルが困っているか」を言えるように、実際に使ったモデル名を覚えておく
   let usedModel = requestedModel;
   try {
-    stream = await ai.models.generateContentStream({
-      model: requestedModel,
-      contents,
-      config: generationConfig,
-    });
+    stream = await startStream(ai, requestedModel, contents, generationConfig);
   } catch (e) {
     // モデル名が見つからないときは、このAPIキーで実際に使えるモデルを探して
     // 一度だけ自動で肩代わりする。GEMINI_MODEL が古い/間違っている場合の保険
@@ -98,11 +97,7 @@ export async function POST(req: Request) {
       if (fallbackModel) {
         usedModel = fallbackModel;
         try {
-          stream = await ai.models.generateContentStream({
-            model: fallbackModel,
-            contents,
-            config: generationConfig,
-          });
+          stream = await startStream(ai, fallbackModel, contents, generationConfig);
         } catch (e2) {
           return errorStream(await friendlyError(e2, ai, requestedModel, usedModel));
         }
@@ -152,6 +147,34 @@ function isModelNotFound(e: unknown): boolean {
   // 存在しないエイリアスは 404 ではなく 400 INVALID_ARGUMENT で返ってくることがあるので、
   // モデル名絡みっぽいエラーは広めに拾ってフォールバックへ回す
   return /404|NOT_FOUND|not found|400|INVALID_ARGUMENT/i.test(msg) && /model/i.test(msg);
+}
+
+function isInvalidArgument(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /400|INVALID_ARGUMENT/i.test(msg);
+}
+
+/**
+ * モデルによっては thinkingConfig を受け付けず、モデル名とは無関係に
+ * 400 invalid argument になることがある。そのときは thinkingConfig を外して
+ * もう一度だけ試す（無料枠の節約より、まず返事が来ることを優先する）
+ */
+async function startStream(
+  ai: GoogleGenAI,
+  model: string,
+  contents: Content[],
+  config: GenerateContentConfig,
+): Promise<AsyncGenerator<GenerateContentResponse>> {
+  try {
+    return await ai.models.generateContentStream({ model, contents, config });
+  } catch (e) {
+    if (isInvalidArgument(e) && config.thinkingConfig) {
+      const rest: GenerateContentConfig = { ...config };
+      delete rest.thinkingConfig;
+      return await ai.models.generateContentStream({ model, contents, config: rest });
+    }
+    throw e;
+  }
 }
 
 // 画像/音声/埋め込み専用など、雑談の返信には使えないモデル
@@ -242,6 +265,6 @@ async function friendlyError(
   }
   // ここに来るのは想定外のエラーなので、次に同じ状況になったときすぐ分かるよう
   // 元のエラーメッセージの先頭部分だけ添えておく
-  const detail = msg.slice(0, 140).replace(/\s+/g, " ").trim();
+  const detail = msg.slice(0, 220).replace(/\s+/g, " ").trim();
   return `（うまく繋がらなかったみたい。少しだけ待ってから、もう一度送ってみて）\n[${detail}]`;
 }
