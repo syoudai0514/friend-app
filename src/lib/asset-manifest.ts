@@ -8,11 +8,15 @@ import type { AssetManifest } from "./asset-types";
 export const BUILT_IN_ASSETS: AssetManifest = {
   "characters": {
     "aimi": {
+      "bandaid": "/characters/aimi/bandaid.png",
       "beachcover": "/characters/aimi/beachcover.png",
       "blazer": "/characters/aimi/blazer.png",
+      "heartswim": "/characters/aimi/heartswim.png",
       "hoodie": "/characters/aimi/hoodie.png",
       "hoodie@happy": "/characters/aimi/hoodie%40happy.png",
       "hoodie@shy": "/characters/aimi/hoodie%40shy.png",
+      "lingerie": "/characters/aimi/lingerie.png",
+      "lolita": "/characters/aimi/lolita.png",
       "mermaid": "/characters/aimi/mermaid.png",
       "mermaid@happy": "/characters/aimi/mermaid%40happy.png",
       "nightwear": "/characters/aimi/nightwear.png",

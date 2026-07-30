@@ -96,6 +96,10 @@ export const OUTFIT: PartOption[] = [
   { id: "shirt", name: "ダボシャツ", rarity: "SSR" },
   { id: "pajama", name: "パジャマ", rarity: "SSR" },
   { id: "nightwear", name: "ナイトウェア", rarity: "SSR" },
+  { id: "lolita", name: "ロリータドレス", rarity: "SSR" },
+  { id: "bandaid", name: "ばんそうこうビキニ", rarity: "SSR" },
+  { id: "heartswim", name: "ハート水着", rarity: "SSR" },
+  { id: "lingerie", name: "ランジェリー", rarity: "SSR" },
 ];
 
 export const HEAD_ACC: PartOption[] = [
