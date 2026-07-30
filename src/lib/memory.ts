@@ -56,14 +56,12 @@ export function splitMemory(text: string): MemorySplit {
 /**
  * ストリームが終わったあと、最後に一度だけ使う版。
  *
- * splitMemory() は「まだ続きが来るかもしれない」前提で、書きかけに見える
- * 末尾を保留して隠す。だがストリームが終わったあとにも同じ判定を使うと、
- * 閉じ括弧を書き忘れた・全角コロンを使ったなど、タグが完成しなかった
- * ときに本文の末尾が無言で消えてしまう（文字が途中で切れて見える不具合の
- * 原因になっていた）。もう続きは来ないので、完成したタグだけを取り除き、
- * 中途半端なものはそのまま本文として出す
+ * モデルが閉じ括弧を書き忘れたまま途中で打ち切られることがある。
+ * そのとき splitMemory() だと書きかけのタグを隠すだけで中身を捨ててしまうので、
+ * ここでは隠しつつ中身も拾う。タグとして中途半端でも、
+ * 会話の本文を巻き込んで消さないことを最優先にしている
  */
-export function stripCompleteMemoryTag(text: string): MemorySplit {
+export function finalizeMemory(text: string): MemorySplit {
   const complete = MEMORY_TAG.exec(text);
   if (complete) {
     return {
@@ -71,5 +69,21 @@ export function stripCompleteMemoryTag(text: string): MemorySplit {
       learned: complete[1].trim() || null,
     };
   }
+
+  const openIdx = lastOpenBracketIndex(text);
+  if (openIdx !== -1) {
+    const raw = text.slice(openIdx + 1);
+    const tail = normalizeColon(raw.toLowerCase());
+    // 書きかけのタグなら、本文には出さずに隠す
+    if (KEYWORD.startsWith(tail)) {
+      return { body: text.slice(0, openIdx).trimEnd(), learned: null };
+    }
+    // キーワードまでは書けているなら、続きを覚えた内容として拾う
+    if (tail.startsWith(KEYWORD)) {
+      const learned = normalizeColon(raw).slice(KEYWORD.length).replace(/[\]］]\s*$/, "").trim();
+      return { body: text.slice(0, openIdx).trimEnd(), learned: learned || null };
+    }
+  }
+
   return { body: text, learned: null };
 }

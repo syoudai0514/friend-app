@@ -2,6 +2,7 @@ import {
   GoogleGenAI,
   HarmBlockThreshold,
   HarmCategory,
+  ThinkingLevel,
   type Content,
   type GenerateContentConfig,
   type GenerateContentResponse,
@@ -19,6 +20,20 @@ export const maxDuration = 60;
 
 /** 無料枠を使い切らないよう、送る履歴は直近だけに絞る */
 const MAX_HISTORY = 24;
+
+/**
+ * 返事の長さの上限。
+ * 見えない思考トークンもここから引かれるモデルがあるので、
+ * 短い返事しか要らなくても余裕をもたせておく
+ */
+const MAX_OUTPUT_TOKENS = 2048;
+
+/**
+ * 一度うまく動いたモデル名。同じ関数インスタンスが再利用されるあいだは覚えておき、
+ * 毎回モデル一覧を引き直さないようにする（余計な通信でレート制限に当たるのを防ぐ）。
+ * 設定を変えたときに古い結果を使い続けないよう、元の指定とセットで持つ
+ */
+let modelCache: { requested: string; resolved: string } | null = null;
 
 interface ChatRequest {
   messages: ChatMessage[];
@@ -73,48 +88,45 @@ export async function POST(req: Request) {
   // lite系がいちばん無料枠（RPM）が広かったので、それを初期値にする。
   // これが無ければ下の自動フォールバックが本当に使えるモデルを探しにいく
   const requestedModel = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
-
-  const generationConfig: GenerateContentConfig = {
-    systemInstruction: buildSystemInstruction({ persona, userName, affection, look, memories }),
-    temperature: 1.05,
-    topP: 0.95,
-    // thinkingConfigを付けたモデルで、見えない思考トークンだけで
-    // この上限を使い切ってしまい、本文が丸ごと空になったり文の途中で
-    // 切れたりする不具合が何度も起きた。モデルによって挙動がまちまちで
-    // 信用できないため、thinkingConfigは付けず、代わりに上限を多めに確保する
-    maxOutputTokens: 1024,
-    safetySettings: [
-      HarmCategory.HARM_CATEGORY_HARASSMENT,
-      HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-      HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-      HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-    ].map((category) => ({ category, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH })),
-  };
+  const systemInstruction = buildSystemInstruction({
+    persona,
+    userName,
+    affection,
+    look,
+    memories,
+  });
 
   let stream: AsyncGenerator<GenerateContentResponse>;
-  // エラー文で「どのモデルが困っているか」を言えるように、実際に使ったモデル名を覚えておく
-  let usedModel = requestedModel;
+  let usedConfig: GenerateContentConfig;
+  // エラー文で「どのモデルが困っているか」を言えるように、実際に使ったモデル名を覚えておく。
+  // 一度うまくいったモデルは覚えておき、次からは探し直さない（無駄な通信を減らす）
+  let usedModel =
+    modelCache?.requested === requestedModel ? modelCache.resolved : requestedModel;
   try {
-    stream = await startStream(ai, requestedModel, contents, generationConfig);
+    ({ stream, config: usedConfig } = await startStream(ai, usedModel, contents, systemInstruction));
   } catch (e) {
     // モデル名が見つからないときは、このAPIキーで実際に使えるモデルを探して
     // 一度だけ自動で肩代わりする。GEMINI_MODEL が古い/間違っている場合の保険
-    if (isModelNotFound(e)) {
-      const fallbackModel = await findFallbackModel(ai, requestedModel);
-      if (fallbackModel) {
-        usedModel = fallbackModel;
-        try {
-          stream = await startStream(ai, fallbackModel, contents, generationConfig);
-        } catch (e2) {
-          return errorStream(await friendlyError(e2, ai, requestedModel, usedModel));
-        }
-      } else {
-        return errorStream(await friendlyError(e, ai, requestedModel, usedModel));
-      }
-    } else {
+    if (!isModelNotFound(e)) {
       return errorStream(await friendlyError(e, ai, requestedModel, usedModel));
     }
+    const fallbackModel = await findFallbackModel(ai, usedModel);
+    if (!fallbackModel) {
+      return errorStream(await friendlyError(e, ai, requestedModel, usedModel));
+    }
+    usedModel = fallbackModel;
+    try {
+      ({ stream, config: usedConfig } = await startStream(
+        ai,
+        fallbackModel,
+        contents,
+        systemInstruction,
+      ));
+    } catch (e2) {
+      return errorStream(await friendlyError(e2, ai, requestedModel, usedModel));
+    }
   }
+  modelCache = { requested: requestedModel, resolved: usedModel };
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream<Uint8Array>({
@@ -122,22 +134,22 @@ export async function POST(req: Request) {
       try {
         let result = await relay(stream, controller, encoder);
         if (result.sent === 0) {
-          // モデルが本文を1文字も返さないことがある（理由ははっきりしないが、
-          // 見えない思考トークンだけで枠を使い切ったり、たまたま空だったりする）。
-          // 同じ内容でもう一度だけ聞き直してみる
+          // 本文が1文字も来ないことがある。思考トークンだけで上限を使い切った、
+          // 安全フィルタに触れた、などが考えられる。上限をさらに広げて一度だけ聞き直す
           try {
-            const retryStream = await startStream(ai, usedModel, contents, generationConfig);
-            result = await relay(retryStream, controller, encoder);
+            const retry = await startStream(ai, usedModel, contents, systemInstruction, {
+              ...usedConfig,
+              maxOutputTokens: (usedConfig.maxOutputTokens ?? MAX_OUTPUT_TOKENS) * 2,
+            });
+            result = await relay(retry.stream, controller, encoder);
           } catch {
             // 聞き直しがエラーになっても、下の空チェックに任せる
           }
         }
         if (result.sent === 0) {
-          controller.enqueue(
-            encoder.encode("……ごめん、今ちょっとうまく言葉が出てこなかった。もう一回言ってくれる？"),
-          );
-        } else if (result.finishReason === "MAX_TOKENS") {
-          // 上限に届いて文の途中で切れたとき、切れたまま出さない
+          controller.enqueue(encoder.encode(emptyReplyMessage(result)));
+        } else if (result.finishReason && result.finishReason !== "STOP") {
+          // 文の途中で打ち切られたとき、切れたまま置かずに余韻でつなぐ
           controller.enqueue(encoder.encode("……"));
         }
       } catch (e) {
@@ -156,14 +168,22 @@ export async function POST(req: Request) {
   });
 }
 
+interface RelayResult {
+  sent: number;
+  finishReason: string | undefined;
+  /** 見えない思考に使われたトークン数。空返答の原因調べに使う */
+  thoughtsTokens: number | undefined;
+}
+
 /** ストリームの本文をそのままクライアントへ送りつつ、送った量と終了理由を返す */
 async function relay(
   stream: AsyncGenerator<GenerateContentResponse>,
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
-): Promise<{ sent: number; finishReason: string | undefined }> {
+): Promise<RelayResult> {
   let sent = 0;
   let finishReason: string | undefined;
+  let thoughtsTokens: number | undefined;
   for await (const chunk of stream) {
     const text = chunk.text;
     if (text) {
@@ -171,8 +191,18 @@ async function relay(
       controller.enqueue(encoder.encode(text));
     }
     finishReason = chunk.candidates?.[0]?.finishReason ?? finishReason;
+    thoughtsTokens = chunk.usageMetadata?.thoughtsTokenCount ?? thoughtsTokens;
   }
-  return { sent, finishReason };
+  return { sent, finishReason, thoughtsTokens };
+}
+
+/** 本文が空だったときのメッセージ。原因が分かるよう終了理由も小さく添える */
+function emptyReplyMessage(result: RelayResult): string {
+  const base = "……ごめん、今ちょっとうまく言葉が出てこなかった。もう一回言ってくれる？";
+  const hints: string[] = [];
+  if (result.finishReason) hints.push(result.finishReason);
+  if (result.thoughtsTokens) hints.push(`thoughts:${result.thoughtsTokens}`);
+  return hints.length > 0 ? `${base}\n[${hints.join(" / ")}]` : base;
 }
 
 function isModelNotFound(e: unknown): boolean {
@@ -188,26 +218,80 @@ function isInvalidArgument(e: unknown): boolean {
 }
 
 /**
- * モデルによっては thinkingConfig を受け付けず、モデル名とは無関係に
- * 400 invalid argument になることがある。そのときは thinkingConfig を外して
- * もう一度だけ試す（無料枠の節約より、まず返事が来ることを優先する）
+ * 思考トークンの設定と安全フィルタの設定は、モデルによって受け付ける形が違い、
+ * 合わないと 400 invalid argument で弾かれる。効かせたい順に候補を並べて、
+ * 弾かれたら次の形へ落としていく。
+ *
+ * 思考を最小にしたいのは、見えない思考トークンが maxOutputTokens を食い潰して
+ * 本文が空になったり途中で切れたりするのを防ぐため。
+ * 安全フィルタを緩めたいのは、恋人同士のふつうの甘い会話が
+ * 途中で打ち切られてしまうのを防ぐため。
+ */
+function configVariants(systemInstruction: string): GenerateContentConfig[] {
+  const base: GenerateContentConfig = {
+    systemInstruction,
+    temperature: 1.05,
+    topP: 0.95,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+  };
+
+  const categories = [
+    HarmCategory.HARM_CATEGORY_HARASSMENT,
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+  ];
+  const safetyOff = categories.map((category) => ({
+    category,
+    threshold: HarmBlockThreshold.OFF,
+  }));
+  const safetyNone = categories.map((category) => ({
+    category,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  }));
+
+  // 3.x 以降は thinkingLevel、それより前は thinkingBudget で思考量を指定する。
+  // どちらが通るか分からないので両方を順に試す
+  const minimalLevel = { thinkingLevel: ThinkingLevel.MINIMAL };
+  const zeroBudget = { thinkingBudget: 0 };
+
+  return [
+    { ...base, safetySettings: safetyOff, thinkingConfig: minimalLevel },
+    { ...base, safetySettings: safetyNone, thinkingConfig: minimalLevel },
+    { ...base, safetySettings: safetyOff, thinkingConfig: zeroBudget },
+    { ...base, safetySettings: safetyNone, thinkingConfig: zeroBudget },
+    { ...base, safetySettings: safetyNone },
+    { ...base },
+  ];
+}
+
+/**
+ * 使える設定の形を上から順に試してストリームを開く。
+ * 実際に通った設定も返す（空返答で聞き直すときに同じ形を使いたいので）
  */
 async function startStream(
   ai: GoogleGenAI,
   model: string,
   contents: Content[],
-  config: GenerateContentConfig,
-): Promise<AsyncGenerator<GenerateContentResponse>> {
-  try {
-    return await ai.models.generateContentStream({ model, contents, config });
-  } catch (e) {
-    if (isInvalidArgument(e) && config.thinkingConfig) {
-      const rest: GenerateContentConfig = { ...config };
-      delete rest.thinkingConfig;
-      return await ai.models.generateContentStream({ model, contents, config: rest });
+  systemInstruction: string,
+  forceConfig?: GenerateContentConfig,
+): Promise<{ stream: AsyncGenerator<GenerateContentResponse>; config: GenerateContentConfig }> {
+  const variants = forceConfig ? [forceConfig] : configVariants(systemInstruction);
+  let lastError: unknown;
+
+  for (const config of variants) {
+    try {
+      const stream = await ai.models.generateContentStream({ model, contents, config });
+      return { stream, config };
+    } catch (e) {
+      // モデル名そのものが違うときは、設定を変えても無駄なのですぐ諦める
+      if (isModelNotFound(e)) throw e;
+      // 設定が受け付けられないときだけ次の形へ落とす
+      if (!isInvalidArgument(e)) throw e;
+      lastError = e;
     }
-    throw e;
   }
+  throw lastError;
 }
 
 // 画像/音声/埋め込み専用など、雑談の返信には使えないモデル
