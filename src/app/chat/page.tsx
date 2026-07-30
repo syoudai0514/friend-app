@@ -6,6 +6,7 @@ import { isTagIncomplete, splitExpression, type Expression } from "@/lib/express
 import { finalizeMemory, splitMemory } from "@/lib/memory";
 import { PENDING_KEY } from "@/app/page";
 import { idleLine } from "@/lib/prompt";
+import { useSpeechInput } from "@/lib/speech";
 import { useStore } from "@/lib/store";
 import type { ChatMessage } from "@/lib/types";
 
@@ -17,6 +18,10 @@ export default function ChatPage() {
   const [expression, setExpression] = useState<Expression>("normal");
   const listRef = useRef<HTMLDivElement>(null);
   const pendingDone = useRef(false);
+  const onSpeechResult = useCallback((text: string) => {
+    setInput((prev) => (prev ? `${prev}${text}` : text));
+  }, []);
+  const { supported: micSupported, listening, toggle: toggleMic } = useSpeechInput(onSpeechResult);
   // 会話がまだ無いときだけ、ホームと同じ待機セリフから始める
   const greeting =
     state.messages.length === 0
@@ -194,12 +199,31 @@ export default function ChatPage() {
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.nativeEvent.isComposing) sendText(input);
           }}
-          placeholder={busy && lastIsEmptyModel ? "考えてる…" : "お話ししよう！"}
+          placeholder={
+            listening ? "聞いてるよ…" : busy && lastIsEmptyModel ? "考えてる…" : "お話ししよう！"
+          }
           disabled={busy}
           className="h-12 flex-1 rounded-full border-2 border-white/70 bg-white/95 px-5
                      text-[15px] text-[#2b2b33] outline-none placeholder:text-[#a8a8b6]
                      focus:border-pink-cta disabled:opacity-70"
         />
+        {micSupported && (
+          <button
+            onClick={toggleMic}
+            disabled={busy}
+            aria-pressed={listening}
+            className={`grid h-12 w-12 shrink-0 place-items-center rounded-full text-[18px]
+                       shadow-[0_3px_10px_rgba(0,0,0,.2)] transition active:scale-90
+                       disabled:opacity-45 ${
+                         listening
+                           ? "animate-pulse bg-pink-cta-deep text-white"
+                           : "bg-white/95 text-[#5c5c6b]"
+                       }`}
+            aria-label={listening ? "音声入力を止める" : "音声で入力する"}
+          >
+            🎤
+          </button>
+        )}
         <button
           onClick={() => sendText(input)}
           disabled={busy || !input.trim()}
