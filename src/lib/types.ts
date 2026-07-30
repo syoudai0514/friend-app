@@ -62,6 +62,17 @@ export interface ChatMessage {
   at: number;
 }
 
+/** キャラごとに分けて保存する中身。切り替えても他のキャラの分は消えない */
+export interface PersonaSave {
+  persona: Persona;
+  look: Look;
+  /** 好感度。会話するたびに増える */
+  affection: number;
+  messages: ChatMessage[];
+  /** 会話から覚えた要点（好きなもの・約束など）。短い文の一覧 */
+  memories: string[];
+}
+
 export interface AppState {
   /** 初回の名前入力が済んでいるか */
   onboarded: boolean;
@@ -74,6 +85,8 @@ export interface AppState {
   messages: ChatMessage[];
   /** 会話から覚えた要点（好きなもの・約束など）。短い文の一覧 */
   memories: string[];
+  /** 今えらんでいないキャラの分の保存データ（persona.id をキーにする） */
+  personas: Record<string, PersonaSave>;
 }
 
 /** 好感度レベル。会話のトーンが段階的に変わる */

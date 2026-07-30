@@ -12,7 +12,7 @@ import {
 } from "react";
 import { DEFAULT_LOOK } from "./catalog";
 import { DEFAULT_PERSONA, PRESETS } from "./personas";
-import type { AppState, ChatMessage, Look, Persona } from "./types";
+import type { AppState, ChatMessage, Look, Persona, PersonaSave } from "./types";
 
 const STORAGE_KEY = "friend-app:v1";
 
@@ -27,12 +27,34 @@ const INITIAL: AppState = {
   affection: 0,
   messages: [],
   memories: [],
+  personas: {},
 };
+
+/** 保存済みキャラ1件分。壊れていたら null を返し、丸ごと読み飛ばせるようにする */
+function reconcilePersonaSave(saved: unknown): PersonaSave | null {
+  if (!saved || typeof saved !== "object") return null;
+  const s = saved as Partial<PersonaSave>;
+  if (!s.persona || typeof s.persona !== "object") return null;
+  return {
+    persona: { ...DEFAULT_PERSONA, ...s.persona } as Persona,
+    look: { ...DEFAULT_LOOK, ...(s.look ?? {}) } as Look,
+    affection: typeof s.affection === "number" ? s.affection : 0,
+    messages: Array.isArray(s.messages) ? (s.messages as ChatMessage[]) : [],
+    memories: Array.isArray(s.memories) ? s.memories.filter((m) => typeof m === "string") : [],
+  };
+}
 
 /** 保存済みデータに欠けたキーがあっても壊れないようにする。エクスポートしたJSONの読み込みにも使う */
 export function reconcile(saved: unknown): AppState {
   if (!saved || typeof saved !== "object") return INITIAL;
   const s = saved as Partial<AppState>;
+  const personas: Record<string, PersonaSave> = {};
+  if (s.personas && typeof s.personas === "object") {
+    for (const [id, v] of Object.entries(s.personas as Record<string, unknown>)) {
+      const r = reconcilePersonaSave(v);
+      if (r) personas[id] = r;
+    }
+  }
   return {
     onboarded: s.onboarded === true,
     userName: typeof s.userName === "string" && s.userName ? s.userName : INITIAL.userName,
@@ -41,6 +63,7 @@ export function reconcile(saved: unknown): AppState {
     affection: typeof s.affection === "number" ? s.affection : 0,
     messages: Array.isArray(s.messages) ? (s.messages as ChatMessage[]) : [],
     memories: Array.isArray(s.memories) ? s.memories.filter((m) => typeof m === "string") : [],
+    personas,
   };
 }
 
@@ -150,12 +173,30 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const applyPreset = useCallback((presetId: string) => {
     const preset = PRESETS.find((p) => p.persona.id === presetId);
     if (!preset) return;
-    setState((s) => ({
-      ...s,
-      persona: preset.persona,
-      look: preset.look,
-      messages: [],
-    }));
+    setState((s) => {
+      if (presetId === s.persona.id) return s;
+      // 今のキャラの会話・好感度・記憶・見た目をしまってから切り替える
+      const personas: Record<string, PersonaSave> = {
+        ...s.personas,
+        [s.persona.id]: {
+          persona: s.persona,
+          look: s.look,
+          affection: s.affection,
+          messages: s.messages,
+          memories: s.memories,
+        },
+      };
+      const saved = personas[presetId];
+      return {
+        ...s,
+        persona: saved ? saved.persona : preset.persona,
+        look: saved ? saved.look : preset.look,
+        affection: saved ? saved.affection : 0,
+        messages: saved ? saved.messages : [],
+        memories: saved ? saved.memories : [],
+        personas,
+      };
+    });
   }, []);
 
   const clearMessages = useCallback(() => {

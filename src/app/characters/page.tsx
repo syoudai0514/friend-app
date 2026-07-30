@@ -20,7 +20,7 @@ export default function CharactersPage() {
     }
     if (
       confirm(
-        `${name}に切り替えますか？\n見た目と性格が入れ替わり、今の会話履歴はリセットされます。\n（好感度はそのまま引き継がれます）`,
+        `${name}に切り替えますか？\n見た目・性格・会話・好感度はキャラごとに保存されるので、\n今のキャラの分はそのまま残ります。`,
       )
     ) {
       applyPreset(id);
