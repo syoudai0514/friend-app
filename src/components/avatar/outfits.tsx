@@ -1,11 +1,21 @@
 import type { ReactNode } from "react";
 import type { ColorOption } from "@/lib/types";
-import { BODY, CX, armPath, shortSleevePath, type FigureDims } from "./geometry";
+import {
+  BODY,
+  CX,
+  armPath,
+  poseById,
+  shortSleevePath,
+  type FigureDims,
+  type Pose,
+} from "./geometry";
 import { hi, ink, mix } from "./palette";
 
 interface OutfitProps {
   d: FigureDims;
   skin: ColorOption;
+  /** 手足の配置。袖だけがこれを見る */
+  pose: Pose;
 }
 
 /** ウエストからスカートを描く */
@@ -58,11 +68,25 @@ function topShape(d: FigureDims, topY = BODY.shoulder - 4, botY = BODY.waist + 6
           C ${CX + b},${BODY.bust - 22} ${CX + 46},${topY + 6} ${CX + 32},${topY} Z`;
 }
 
-function Sleeves({ color, long, width = 22 }: { color: string; long: boolean; width?: number }) {
+/**
+ * 袖。腕そのものの曲線をなぞって描くので、ポーズを増やしても
+ * 服側を書き換える必要がない
+ */
+function Sleeves({
+  color,
+  long,
+  width = 22,
+  pose,
+}: {
+  color: string;
+  long: boolean;
+  width?: number;
+  pose: Pose;
+}) {
   return (
     <g stroke={color} strokeWidth={width} strokeLinecap="round" fill="none">
-      <path d={long ? armPath(-1) : shortSleevePath(-1)} />
-      <path d={long ? armPath(1) : shortSleevePath(1)} />
+      <path d={long ? armPath(-1, pose) : shortSleevePath(-1, pose)} />
+      <path d={long ? armPath(1, pose) : shortSleevePath(1, pose)} />
     </g>
   );
 }
@@ -206,12 +230,12 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
   },
 
   /* ------------------------------ ストリート ------------------------------ */
-  street: ({ d }) => (
+  street: ({ d, pose }) => (
     <g>
       {/* インナー */}
       <path d={topShape(d, BODY.shoulder - 2, BODY.waist - 10, 0)} fill={cloth("#2a2529")} />
       {/* 肩を出した長袖 */}
-      <Sleeves color="#e07a2e" long width={26} />
+      <Sleeves pose={pose} color="#e07a2e" long width={26} />
       {/* クロップトップ */}
       <path
         d={`M ${CX - 34},${BODY.shoulder + 10}
@@ -286,9 +310,9 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
   ),
 
   /* ----------------------------- セーラー服 ----------------------------- */
-  sailor: ({ d }) => (
+  sailor: ({ d, pose }) => (
     <g>
-      <Sleeves color="#fdfdfd" long={false} />
+      <Sleeves pose={pose} color="#fdfdfd" long={false} />
       <path d={topShape(d)} fill={cloth("#fdfdfd")} />
       {/* セーラー襟 */}
       <path
@@ -317,10 +341,10 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
   ),
 
   /* ------------------------------ ブレザー ------------------------------ */
-  blazer: ({ d }) => (
+  blazer: ({ d, pose }) => (
     <g>
       <path d={topShape(d)} fill={cloth("#fdfdfd")} />
-      <Sleeves color="#39405c" long />
+      <Sleeves pose={pose} color="#39405c" long />
       {/* ジャケット本体（前開き） */}
       <path
         d={`M ${CX - 32},${BODY.shoulder - 4}
@@ -363,7 +387,7 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
   ),
 
   /* ------------------------------ パーカー ------------------------------ */
-  hoodie: ({ d }) => (
+  hoodie: ({ d, pose }) => (
     <g>
       {/* フード */}
       <path
@@ -371,7 +395,7 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
             C ${CX + 26},${BODY.shoulder + 22} ${CX - 26},${BODY.shoulder + 22} ${CX - 40},${BODY.shoulder + 10} Z`}
         fill={cloth("#d9a8c4")}
       />
-      <Sleeves color="#e8bcd6" long width={26} />
+      <Sleeves pose={pose} color="#e8bcd6" long width={26} />
       <path d={topShape(d, BODY.shoulder - 6, BODY.crotch + 24, 8)} fill={cloth("#e8bcd6")} />
       {/* 前ポケット */}
       <path
@@ -397,9 +421,9 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
   ),
 
   /* ------------------------------ ワンピース ------------------------------ */
-  onepiece: ({ d }) => (
+  onepiece: ({ d, pose }) => (
     <g>
-      <Sleeves color="#f5f0e4" long={false} width={20} />
+      <Sleeves pose={pose} color="#f5f0e4" long={false} width={20} />
       <path d={topShape(d, BODY.shoulder - 6, BODY.waist)} fill={cloth("#f5f0e4")} />
       {/* 襟もと */}
       <path d={`M ${CX - 20},${BODY.shoulder - 4} C ${CX - 10},${BODY.shoulder + 22} ${CX + 10},${BODY.shoulder + 22} ${CX + 20},${BODY.shoulder - 4}`} fill="none" stroke="#ded4bf" strokeWidth={2.4} />
@@ -426,10 +450,10 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
   ),
 
   /* -------------------------------- スーツ -------------------------------- */
-  suit: ({ d }) => (
+  suit: ({ d, pose }) => (
     <g>
       <path d={topShape(d)} fill={cloth("#2e2e35")} />
-      <Sleeves color="#9aa3ad" long />
+      <Sleeves pose={pose} color="#9aa3ad" long />
       <path
         d={`M ${CX - 32},${BODY.shoulder - 4}
             C ${CX - 46},${BODY.shoulder + 4} ${CX - d.bust - 2},${BODY.bust - 22} ${CX - d.bust - 2},${BODY.bust}
@@ -462,7 +486,7 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
   ),
 
   /* ----------------------------- ルームウェア ----------------------------- */
-  roomwear: ({ d }) => (
+  roomwear: ({ d, pose }) => (
     <g>
       {/* キャミ */}
       <path d={topShape(d, BODY.shoulder + 22, BODY.waist + 14, 0)} fill={cloth("#cfe4f5")} />
@@ -479,7 +503,7 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
         fill={cloth("#cfe4f5")}
       />
       {/* もこもこカーディガン */}
-      <Sleeves color="#f2e6cf" long width={30} />
+      <Sleeves pose={pose} color="#f2e6cf" long width={30} />
       <path
         d={`M ${CX - 34},${BODY.shoulder - 6}
             C ${CX - 50},${BODY.shoulder + 4} ${CX - d.bust - 8},${BODY.bust - 20} ${CX - d.bust - 8},${BODY.bust + 6}
@@ -506,9 +530,9 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
   ),
 
   /* -------------------------------- ニット -------------------------------- */
-  knit: ({ d }) => (
+  knit: ({ d, pose }) => (
     <g>
-      <Sleeves color="#d8b8a0" long width={26} />
+      <Sleeves pose={pose} color="#d8b8a0" long width={26} />
       <path d={topShape(d, BODY.shoulder - 8, BODY.crotch + 26, 9)} fill={cloth("#d8b8a0")} />
       {/* 襟のリブ */}
       <path d={`M ${CX - 26},${BODY.shoulder - 4} C ${CX - 14},${BODY.shoulder + 18} ${CX + 14},${BODY.shoulder + 18} ${CX + 26},${BODY.shoulder - 4}`} fill="none" stroke="#c2a086" strokeWidth={7} strokeLinecap="round" />
@@ -523,9 +547,9 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
   ),
 
   /* -------------------------------- 浴衣 -------------------------------- */
-  yukata: ({ d }) => (
+  yukata: ({ d, pose }) => (
     <g>
-      <Sleeves color="#4a6fa8" long={false} width={30} />
+      <Sleeves pose={pose} color="#4a6fa8" long={false} width={30} />
       {/* たもと */}
       <path d={`M ${CX - d.bust - 12},${BODY.bust - 4} l -12,58 l 26,6 l 4,-58 Z`} fill={cloth("#4a6fa8")} />
       <path d={`M ${CX + d.bust + 12},${BODY.bust - 4} l 12,58 l -26,6 l -4,-58 Z`} fill={cloth("#4a6fa8")} />
@@ -589,7 +613,17 @@ const OUTFITS: Record<string, (p: OutfitProps) => ReactNode> = {
   ),
 };
 
-export function Outfit({ variant, d, skin }: { variant: string; d: FigureDims; skin: ColorOption }) {
+export function Outfit({
+  variant,
+  d,
+  skin,
+  pose = poseById(undefined),
+}: {
+  variant: string;
+  d: FigureDims;
+  skin: ColorOption;
+  pose?: Pose;
+}) {
   const render = OUTFITS[variant] ?? OUTFITS.sailor;
   const palette = OUTFIT_PALETTE[variant] ?? OUTFIT_PALETTE.sailor;
   return (
@@ -602,7 +636,7 @@ export function Outfit({ variant, d, skin }: { variant: string; d: FigureDims; s
       strokeLinecap="round"
     >
       <ClothDefs colors={palette} />
-      {render({ d, skin })}
+      {render({ d, skin, pose })}
     </g>
   );
 }

@@ -1,66 +1,45 @@
-/** アバターSVGの共通座標。全パーツがこの数値を基準に描かれる */
-
-export const VIEW = { w: 300, h: 640 };
-export const CX = 150;
-
-/** 顔まわり */
-export const FACE = {
-  top: 34,
-  chin: 177,
-  left: 100,
-  right: 200,
-  browY: 92,
-  eyeY: 118,
-  eyeDx: 23,
-  noseY: 140,
-  mouthY: 156,
-  cheekY: 143,
-  cheekDx: 33,
-};
-
 /**
- * 顔まわりのパーツは上の FACE 座標系（顔の幅100・高さ143）のまま描き、
- * 最後にこの変換で縮めて頭に載せる。こうすると顔の作り込みを崩さずに
- * 頭身バランスだけ調整できる。
+ * アバターSVGの形。座標の定数は geometry-base、手足の配置は poses が持ち、
+ * ここはその2つを組み合わせて実際のパス文字列を作る。
+ *
+ * 手足のパスはすべてポーズを受け取る。省略したときは今までと同じ立ち姿に
+ * なるので、ポーズを知らない呼び出し側はそのままで動く。
  */
-export const HEAD_SCALE = 0.78;
-export const HEAD_TRANSFORM = `translate(${CX * (1 - HEAD_SCALE)},12) scale(${HEAD_SCALE})`;
 
-/** 体の縦位置。頭を縮めたぶん、全体で約5.3頭身になる */
-export const BODY = {
-  neckTop: 138,
-  shoulder: 168,
-  bust: 226,
-  waist: 288,
-  hip: 342,
-  crotch: 376,
-  knee: 492,
-  ankle: 600,
-};
+import { poseById, type Arm, type Leg, type Pose, type Pt } from "./poses";
+import { BODY, CX, type FigureDims } from "./geometry-base";
 
-export type FigureDims = { bust: number; waist: number; hip: number };
+export * from "./geometry-base";
+export { POSES, DEFAULT_POSE_ID, poseById } from "./poses";
+export type { Pose, Arm, Leg, Pt } from "./poses";
 
-export const FIGURE_DIMS: Record<string, FigureDims> = {
-  slim: { bust: 43, waist: 32, hip: 45 },
-  normal: { bust: 48, waist: 35, hip: 48 },
-  rich: { bust: 55, waist: 36, hip: 52 },
-};
+/** 立ち姿の基準。ポーズを渡されなかったときはこれになる */
+const NEUTRAL = poseById(undefined);
 
-export function figureDims(id: string): FigureDims {
-  return FIGURE_DIMS[id] ?? FIGURE_DIMS.normal;
+function armFor(pose: Pose, side: number): Arm {
+  return side < 0 ? pose.arms.left : pose.arms.right;
 }
 
-/** 顔の輪郭。こめかみが張って顎に向かって細くなる、アニメ寄りの形 */
-export const FACE_PATH = `
-  M 150,30
-  C 122,30 103,50 101,84
-  C 100,106 105,126 113,144
-  C 121,162 136,177 150,178
-  C 164,177 179,162 187,144
-  C 195,126 200,106 199,84
-  C 197,50 178,30 150,30 Z`;
+function legFor(pose: Pose, side: number): Leg {
+  return side < 0 ? pose.legs.left : pose.legs.right;
+}
 
-/** 胴体。体型に応じて幅が変わる */
+/** 中心からのずれを実座標に直す */
+function xy(p: Pt): [number, number] {
+  return [CX + p.dx, p.y];
+}
+
+function curve(a: Pt, c1: Pt, c2: Pt, b: Pt): string {
+  const [ax, ay] = xy(a);
+  const [c1x, c1y] = xy(c1);
+  const [c2x, c2y] = xy(c2);
+  const [bx, by] = xy(b);
+  return `M ${ax},${ay} C ${c1x},${c1y} ${c2x},${c2y} ${bx},${by}`;
+}
+
+/* -------------------------------- 胴体 -------------------------------- */
+
+/** 胴体。体型に応じて幅が変わる。ポーズでは変わらない */
 export function torsoPath({ bust, waist, hip }: FigureDims): string {
   // 上辺は首の幅ぶんしかない。そこから肩へなだらかに下る形にすると
   // 「箱に頭が乗っている」感じにならない
@@ -80,44 +59,95 @@ export function torsoPath({ bust, waist, hip }: FigureDims): string {
     Z`;
 }
 
+/* --------------------------------- 腕 --------------------------------- */
+
 /**
  * 腕。side は -1（左）/ +1（右）。
  * 付け根を胴の内側から始めることで、胴に隠れて肩が自然につながる。
  */
-export function armPath(side: number): string {
-  return `M ${CX + side * 34},${BODY.shoulder + 2}
-          C ${CX + side * 58},${BODY.bust + 6} ${CX + side * 67},${BODY.waist + 14} ${CX + side * 66},${BODY.crotch}`;
+export function armPath(side: number, pose: Pose = NEUTRAL): string {
+  const a = armFor(pose, side);
+  return curve(a.from, a.c1, a.c2, a.to);
 }
 
-/** 手の位置（腕の先端） */
-export function handPos(side: number): { x: number; y: number } {
-  return { x: CX + side * 66, y: BODY.crotch + 4 };
+/** 手の位置と向き（腕の先端） */
+export function handPos(
+  side: number,
+  pose: Pose = NEUTRAL,
+): { x: number; y: number; angle: number } {
+  const a = armFor(pose, side);
+  return { x: CX + a.to.dx, y: a.to.y + 4, angle: a.handAngle };
 }
 
-/** 半袖の袖丈 */
-export function shortSleevePath(side: number): string {
-  return `M ${CX + side * 36},${BODY.shoulder - 2}
-          C ${CX + side * 54},${BODY.shoulder + 26} ${CX + side * 61},${BODY.bust + 4} ${CX + side * 62},${BODY.bust + 22}`;
+function lerp(a: Pt, b: Pt, t: number): Pt {
+  return { dx: a.dx + (b.dx - a.dx) * t, y: a.y + (b.y - a.y) * t };
 }
 
-export function thighPath(side: number): string {
-  return `M ${CX + side * 22},${BODY.crotch - 4}
-          C ${CX + side * 25},${BODY.crotch + 44} ${CX + side * 24},${BODY.knee - 30} ${CX + side * 23},${BODY.knee}`;
+/**
+ * 腕の曲線を途中で切って、袖の形を作る。
+ *
+ * 袖をポーズごとに手で描いていると、ポーズを足すたびに全部の服を
+ * 直すことになる。腕の曲線そのものを分割して使えば、服側は何も
+ * 知らないままどのポーズにも追従する。
+ * （3次ベジェの分割＝ドゥ・カステリョのアルゴリズム）
+ */
+function splitArm(a: Arm, t: number): string {
+  const p01 = lerp(a.from, a.c1, t);
+  const p12 = lerp(a.c1, a.c2, t);
+  const p23 = lerp(a.c2, a.to, t);
+  const p012 = lerp(p01, p12, t);
+  const p123 = lerp(p12, p23, t);
+  const end = lerp(p012, p123, t);
+  return curve(a.from, p01, p012, end);
 }
 
-export function calfPath(side: number): string {
-  return `M ${CX + side * 23},${BODY.knee - 2}
-          C ${CX + side * 22},${BODY.knee + 40} ${CX + side * 21},${BODY.ankle - 26} ${CX + side * 21},${BODY.ankle}`;
+/** 半袖の袖丈。腕の付け根から4割ほどのところで切る */
+export function shortSleevePath(side: number, pose: Pose = NEUTRAL): string {
+  return splitArm(armFor(pose, side), 0.42);
 }
 
-/** 切り抜き範囲。サムネイルで使う（頭の変換後の座標） */
-export const CROPS: Record<string, string> = {
-  full: `0 0 ${VIEW.w} ${VIEW.h}`,
-  /** クローゼットのプレビュー用。左右の余白を削って大きく見せる */
-  preview: "48 0 204 624",
-  face: "112 58 76 96",
-  head: "88 6 124 172",
-  /** 髪型用。ポニーテールやツインテールの毛先まで入れる */
-  hair: "56 4 188 290",
-  bust: "70 150 160 250",
-};
+/** 七分袖など、好きな長さで切りたいとき */
+export function sleevePath(side: number, length: number, pose: Pose = NEUTRAL): string {
+  return splitArm(armFor(pose, side), Math.min(Math.max(length, 0.05), 1));
+}
+
+/* --------------------------------- 脚 --------------------------------- */
+
+export function thighPath(side: number, pose: Pose = NEUTRAL): string {
+  const l = legFor(pose, side);
+  return curve(l.hip, l.thighC1, l.thighC2, l.knee);
+}
+
+export function calfPath(side: number, pose: Pose = NEUTRAL): string {
+  const l = legFor(pose, side);
+  // 膝で少し重ねて描くと、腿と脛のつなぎ目が出ない
+  const knee: Pt = { dx: l.knee.dx, y: l.knee.y - 2 };
+  return curve(knee, l.calfC1, l.calfC2, l.ankle);
+}
+
+/** 膝の位置（ハイライト用） */
+export function kneePos(side: number, pose: Pose = NEUTRAL): { x: number; y: number } {
+  const l = legFor(pose, side);
+  return { x: CX + l.knee.dx, y: l.knee.y };
+}
+
+/** 足の位置と向き */
+export function footPos(
+  side: number,
+  pose: Pose = NEUTRAL,
+): { x: number; y: number; angle: number } {
+  const l = legFor(pose, side);
+  return { x: CX + l.ankle.dx, y: l.ankle.y + 6, angle: l.footAngle };
+}
+
+/** 接地影の中心。両足の真ん中に置くと、脚を組んでも影がずれない */
+export function groundPos(pose: Pose = NEUTRAL): { x: number; y: number; rx: number } {
+  const left = pose.legs.left.ankle;
+  const right = pose.legs.right.ankle;
+  const spread = Math.abs(right.dx - left.dx);
+  return {
+    x: CX + (left.dx + right.dx) / 2,
+    y: Math.max(left.y, right.y) + 12,
+    rx: 42 + spread * 0.5,
+  };
+}

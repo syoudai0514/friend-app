@@ -44,6 +44,7 @@ export const PRESETS: PresetCharacter[] = [
       skin: "fair",
       figure: "rich",
       scene: "poolside",
+      pose: "asis",
     },
   },
   {
@@ -80,6 +81,7 @@ export const PRESETS: PresetCharacter[] = [
       skin: "fair",
       figure: "normal",
       scene: "washitsu",
+      pose: "asis",
     },
   },
   {
@@ -116,6 +118,7 @@ export const PRESETS: PresetCharacter[] = [
       skin: "fair",
       figure: "slim",
       scene: "night",
+      pose: "asis",
     },
   },
   {
@@ -152,6 +155,7 @@ export const PRESETS: PresetCharacter[] = [
       skin: "fair",
       figure: "slim",
       scene: "classroom",
+      pose: "asis",
     },
   },
   {
@@ -188,6 +192,7 @@ export const PRESETS: PresetCharacter[] = [
       skin: "fair",
       figure: "rich",
       scene: "office",
+      pose: "asis",
     },
   },
 ];

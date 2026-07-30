@@ -102,6 +102,25 @@ export const OUTFIT: PartOption[] = [
   { id: "lingerie", name: "ランジェリー", rarity: "SSR" },
 ];
 
+/**
+ * 立ちポーズ。手足の位置だけを差し替えるので、どの衣装・髪型・キャラとも
+ * 自由に組み合わせられる（袖は腕の曲線から作られるため服の書き換えが要らない）
+ */
+export const POSE: PartOption[] = [
+  // 立ち絵の写真はそこに描かれたポーズしか取れないので、
+  // 「絵のまま」を既定にして、写真がある衣装では絵の見栄えを優先する。
+  // それ以外のポーズを選んだときは、どんな組み合わせでも描けるSVGに切り替わる
+  { id: "asis", name: "立ち絵のまま", rarity: "NR" },
+  { id: "natural", name: "ふつう立ち", rarity: "NR" },
+  { id: "armsout", name: "おいでポーズ", rarity: "SR" },
+  { id: "armsdown", name: "きをつけ", rarity: "NR" },
+  { id: "apart", name: "どっしり", rarity: "NR" },
+  { id: "touchcheek", name: "ほおに指", rarity: "SSR" },
+  { id: "handhip", name: "腰に手", rarity: "SR" },
+  { id: "wave", name: "おーい", rarity: "SSR" },
+  { id: "behind", name: "手を後ろに", rarity: "SR" },
+];
+
 export const HEAD_ACC: PartOption[] = [
   { id: "none", name: "なし", rarity: "NR" },
   { id: "catphones", name: "ネコ耳ヘッドホン", rarity: "SR" },
@@ -163,7 +182,7 @@ export interface SubTab {
   /** カラーパレット形式で出すか */
   isColor?: boolean;
   /** サムネイルの切り抜き */
-  crop: "face" | "head" | "hair" | "bust" | "full" | "scene";
+  crop: "face" | "head" | "hair" | "bust" | "full" | "scene" | "pose";
 }
 
 export interface Tab {
@@ -180,6 +199,11 @@ export const CLOSET_TABS: Tab[] = [
       { key: "outfit", label: "服", options: OUTFIT, crop: "bust" },
       { key: "figure", label: "体型", options: FIGURE, crop: "bust" },
     ],
+  },
+  {
+    id: "pose",
+    label: "ポーズ",
+    subTabs: [{ key: "pose", label: "ポーズ", options: POSE, crop: "pose" }],
   },
   {
     id: "hair",
@@ -250,6 +274,7 @@ export const DEFAULT_LOOK: Look = {
   skin: "fair",
   figure: "rich",
   scene: "poolside",
+  pose: "asis",
 };
 
 /* -------------------------------------------------------------------------- */

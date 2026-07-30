@@ -1,4 +1,4 @@
-import { readdir, writeFile } from "node:fs/promises";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -37,12 +37,59 @@ function idOf(fileName) {
   return path.basename(fileName, path.extname(fileName)).toLowerCase();
 }
 
+/**
+ * 重ねて作る立ち絵を拾う。
+ *
+ * public/characters/<キャラ>/parts/<体 or 頭>/<ID>.png と、
+ * その並べ方を書いた parts/anchors.json が揃っているときだけ有効になる。
+ * anchors.json はパーツを切り出したときに一緒に作られる。
+ */
+async function partsOf(charName) {
+  const dir = path.join("characters", charName, "parts");
+  let anchors;
+  try {
+    anchors = JSON.parse(await readFile(path.join(PUBLIC_DIR, dir, "anchors.json"), "utf8"));
+  } catch {
+    // anchors.json が無いキャラは1枚絵のまま。これは正常
+    return null;
+  }
+  if (!anchors?.canvas) return null;
+
+  const slots = {};
+  for (const slot of ["body", "head"]) {
+    const entries = {};
+    for (const file of await imagesIn(path.join(dir, slot))) {
+      const id = idOf(file);
+      const a = anchors[slot]?.[id];
+      // 置く場所が分からない画像は重ねようがないので飛ばす
+      if (!a) continue;
+      entries[id] = {
+        src: `/characters/${encodeURIComponent(charName)}/parts/${slot}/${encodeURIComponent(file)}`,
+        w: a.w,
+        h: a.h,
+        x: a.x,
+        y: a.y,
+        neckX: a.neckX,
+        neckY: a.neckY,
+        ...(a.face ? { face: a.face } : {}),
+        ...(a.pose ? { pose: a.pose } : {}),
+      };
+    }
+    slots[slot] = entries;
+  }
+  if (Object.keys(slots.body).length === 0) return null;
+  return { canvas: anchors.canvas, ...slots };
+}
+
 async function build() {
   const characters = {};
+  const parts = {};
   try {
     const dirs = await readdir(path.join(PUBLIC_DIR, "characters"), { withFileTypes: true });
     for (const dir of dirs.sort((a, b) => a.name.localeCompare(b.name))) {
       if (!dir.isDirectory()) continue;
+      const layered = await partsOf(dir.name);
+      if (layered) parts[dir.name] = layered;
       const files = await imagesIn(path.join("characters", dir.name));
       if (files.length === 0) continue;
       characters[dir.name] = Object.fromEntries(
@@ -61,7 +108,7 @@ async function build() {
     backgrounds[idOf(f)] = `/backgrounds/${encodeURIComponent(f)}`;
   }
 
-  return { characters, backgrounds };
+  return { characters, backgrounds, parts };
 }
 
 const manifest = await build();
@@ -82,6 +129,11 @@ const charCount = Object.values(manifest.characters).reduce(
   (n, files) => n + Object.keys(files).length,
   0,
 );
+const partCount = Object.values(manifest.parts).reduce(
+  (n, p) => n + Object.keys(p.body).length + Object.keys(p.head).length,
+  0,
+);
 console.log(
-  `asset manifest: 立ち絵 ${charCount}枚 / 背景 ${Object.keys(manifest.backgrounds).length}枚 -> src/lib/asset-manifest.ts`,
+  `asset manifest: 立ち絵 ${charCount}枚 / パーツ ${partCount}枚 / ` +
+    `背景 ${Object.keys(manifest.backgrounds).length}枚 -> src/lib/asset-manifest.ts`,
 );

@@ -1,7 +1,7 @@
 export type Rarity = "NR" | "SR" | "SSR";
 
 /** アバターSVGの切り抜き範囲。サムネイルとフル表示で使い分ける */
-export type Crop = "full" | "preview" | "face" | "head" | "hair" | "bust";
+export type Crop = "full" | "preview" | "face" | "head" | "hair" | "bust" | "pose";
 
 export interface PartOption {
   id: string;
@@ -37,6 +37,8 @@ export interface Look {
   skin: string;
   figure: string;
   scene: string;
+  /** 立ちポーズ。手足の配置だけを変えるので、どの衣装とも組み合わせられる */
+  pose: string;
 }
 
 /** キャラの中身（人格）。会話プロンプトの素になる */

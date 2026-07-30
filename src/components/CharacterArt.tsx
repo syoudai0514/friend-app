@@ -46,7 +46,7 @@ export function CharacterArt({
   /** しゃべっている最中。口が動いて、話し始めに小さく弾む */
   talking?: boolean;
 }) {
-  const { characterSrc } = useAssets();
+  const { characterSrc, layeredArt } = useAssets();
   const animate = MOTION_CROPS.includes(crop);
 
   const [blink, setBlink] = useState(false);
@@ -105,16 +105,51 @@ export function CharacterArt({
     return () => ro.disconnect();
   }, [animate]);
 
-  const src = PHOTO_CROPS.includes(crop) ? characterSrc(personaId, look.outfit, expression) : null;
+  const usePhoto = PHOTO_CROPS.includes(crop);
+  // パーツが揃っていれば重ねて作る。頭を1枚足すだけで全衣装に効くので、
+  // 1枚絵より先に試す
+  const candidate = usePhoto ? layeredArt(personaId, look.outfit, look.hair) : null;
 
-  // 記号を顔に合わせるための基準。写真は実測値、SVGは座標から計算
-  const anchor = src ? photoAnchor(personaId, look.outfit) : svgAnchor(crop);
-  const intrinsic = src ? natural : viewBoxSize(crop);
+  /**
+   * 写真の立ち絵は、そこに描かれたポーズしか取れない。
+   * 「立ち絵のまま」か、選んだポーズがその絵と同じときだけ写真を使い、
+   * それ以外はどんな組み合わせでも描けるSVGに切り替える。
+   */
+  const artPose = look.pose ?? "asis";
+  const canUseArt = (drawn: string | null) => artPose === "asis" || artPose === drawn;
+
+  const layered = candidate && canUseArt(candidate.pose) ? candidate : null;
+  // 1枚絵はポーズが分からないので、「立ち絵のまま」のときだけ使う
+  const src =
+    !layered && usePhoto && artPose === "asis"
+      ? characterSrc(personaId, look.outfit, expression)
+      : null;
+
+  // 記号を顔に合わせるための基準。
+  // 重ねて作る立ち絵は頭パーツが顔の位置を持っているので、それを使う。
+  // 頭を差し替えても記号がついてくる
+  const anchor = layered?.face ?? (layered || src ? photoAnchor(personaId, look.outfit) : svgAnchor(crop));
+  const intrinsic = layered ? layered.canvas : src ? natural : viewBoxSize(crop);
   const box = intrinsic
     ? fitBox(size.w, size.h, intrinsic.w, intrinsic.h)
     : { left: 0, top: 0, width: 0, height: 0 };
 
-  const inner = src ? (
+  const inner = layered ? (
+    /* 体と頭を重ねて作る立ち絵。
+       共通キャンバスをそのまま viewBox にすると、拡大率も下端ぞろえも
+       SVGアバターや1枚絵とまったく同じ規則で決まる */
+    <svg
+      viewBox={`0 0 ${layered.canvas.w} ${layered.canvas.h}`}
+      preserveAspectRatio={crop === "bust" ? "xMidYMin slice" : "xMidYMax meet"}
+      className="h-full w-full"
+      role="img"
+      aria-label="キャラクター"
+    >
+      {layered.layers.map((p) => (
+        <image key={p.src} href={p.src} x={p.x} y={p.y} width={p.w} height={p.h} />
+      ))}
+    </svg>
+  ) : src ? (
     // bust（服のサムネ）は上半身が見たいので上寄せで切る。
     // それ以外は全身を収めて足元を揃える
     // eslint-disable-next-line @next/next/no-img-element -- 利用者が後から置く画像なので寸法が不定

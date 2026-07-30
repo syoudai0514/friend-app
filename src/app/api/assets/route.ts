@@ -62,10 +62,15 @@ export async function GET() {
   }
 
   // ビルド時の一覧を土台にし、実際に見つかったものを上から重ねる。
-  // public/ が読めない環境でも、少なくともビルド時の分は必ず返る
+  // public/ が読めない環境でも、少なくともビルド時の分は必ず返る。
+  //
+  // 重ねて作る立ち絵（parts）は、どのパーツをどこに置くかを anchors.json から
+  // 読み解いて初めて成立する。ここでは組み立て直さず、ビルド時の内容を
+  // そのまま持ち越す。落とすとパーツが消えて1枚絵に戻ってしまう
   const merged: AssetManifest = {
     characters: { ...BUILT_IN_ASSETS.characters },
     backgrounds: { ...BUILT_IN_ASSETS.backgrounds, ...manifest.backgrounds },
+    parts: BUILT_IN_ASSETS.parts,
   };
   for (const [personaId, files] of Object.entries(manifest.characters)) {
     merged.characters[personaId] = { ...merged.characters[personaId], ...files };

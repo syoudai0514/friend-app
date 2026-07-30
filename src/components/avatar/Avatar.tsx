@@ -12,7 +12,11 @@ import {
   armPath,
   calfPath,
   figureDims,
+  footPos,
+  groundPos,
   handPos,
+  kneePos,
+  poseById,
   thighPath,
   torsoPath,
 } from "./geometry";
@@ -49,6 +53,11 @@ export function Avatar({
   const skin = color(SKIN_MAP, look.skin, "fair");
   const d = figureDims(look.figure);
   const limb = LIMB_WIDTH[look.figure] ?? LIMB_WIDTH.normal;
+  // 手足の配置はポーズが決める。胴と腰は動かないので、どの服とも組み合わせられる
+  const pose = poseById(look.pose);
+  const ground = groundPos(pose);
+  // 首の付け根を軸に頭を傾ける。髪も同じ変換に乗るので一緒に傾く
+  const headTransform = `${HEAD_TRANSFORM} rotate(${pose.headTilt},150,168)`;
 
   // 表情でベースの顔を上書きし、そのうえに まばたき／口の動き を重ねる
   const ex = EXPRESSIONS[expression] ?? {};
@@ -72,12 +81,12 @@ export function Avatar({
   /** 手足は「太い線画 → 上から肌色」の二度描きで輪郭をつける */
   const limbs = (stroke: string, grow: number) => (
     <g fill="none" strokeLinecap="round" stroke={stroke}>
-      <path d={thighPath(-1)} strokeWidth={limb.thigh + grow} />
-      <path d={thighPath(1)} strokeWidth={limb.thigh + grow} />
-      <path d={calfPath(-1)} strokeWidth={limb.calf + grow} />
-      <path d={calfPath(1)} strokeWidth={limb.calf + grow} />
-      <path d={armPath(-1)} strokeWidth={limb.arm + grow} />
-      <path d={armPath(1)} strokeWidth={limb.arm + grow} />
+      <path d={thighPath(-1, pose)} strokeWidth={limb.thigh + grow} />
+      <path d={thighPath(1, pose)} strokeWidth={limb.thigh + grow} />
+      <path d={calfPath(-1, pose)} strokeWidth={limb.calf + grow} />
+      <path d={calfPath(1, pose)} strokeWidth={limb.calf + grow} />
+      <path d={armPath(-1, pose)} strokeWidth={limb.arm + grow} />
+      <path d={armPath(1, pose)} strokeWidth={limb.arm + grow} />
     </g>
   );
 
@@ -111,10 +120,10 @@ export function Avatar({
       </defs>
 
       {/* 接地影。これがあるだけで背景から浮かなくなる */}
-      <ellipse cx={CX} cy={BODY.ankle + 12} rx={62} ry={13} fill={`url(#${groundG})`} />
+      <ellipse cx={ground.x} cy={ground.y} rx={ground.rx} ry={13} fill={`url(#${groundG})`} />
 
       {/* 後ろ髪（頭の座標系） */}
-      <g transform={HEAD_TRANSFORM}>
+      <g transform={headTransform}>
         <HairBack variant={look.hair} color={hair} />
       </g>
 
@@ -123,23 +132,25 @@ export function Avatar({
       {limbs(skin.value, 0)}
       {/* 手足の陰（内側） */}
       <g fill="none" strokeLinecap="round" stroke={sh1} opacity={0.55}>
-        <path d={thighPath(-1)} strokeWidth={limb.thigh * 0.34} transform={`translate(${limb.thigh * 0.3},0)`} />
-        <path d={thighPath(1)} strokeWidth={limb.thigh * 0.34} transform={`translate(${-limb.thigh * 0.3},0)`} />
-        <path d={calfPath(-1)} strokeWidth={limb.calf * 0.34} transform={`translate(${limb.calf * 0.3},0)`} />
-        <path d={calfPath(1)} strokeWidth={limb.calf * 0.34} transform={`translate(${-limb.calf * 0.3},0)`} />
-        <path d={armPath(-1)} strokeWidth={limb.arm * 0.32} transform={`translate(${-limb.arm * 0.3},0)`} />
-        <path d={armPath(1)} strokeWidth={limb.arm * 0.32} transform={`translate(${limb.arm * 0.3},0)`} />
+        <path d={thighPath(-1, pose)} strokeWidth={limb.thigh * 0.34} transform={`translate(${limb.thigh * 0.3},0)`} />
+        <path d={thighPath(1, pose)} strokeWidth={limb.thigh * 0.34} transform={`translate(${-limb.thigh * 0.3},0)`} />
+        <path d={calfPath(-1, pose)} strokeWidth={limb.calf * 0.34} transform={`translate(${limb.calf * 0.3},0)`} />
+        <path d={calfPath(1, pose)} strokeWidth={limb.calf * 0.34} transform={`translate(${-limb.calf * 0.3},0)`} />
+        <path d={armPath(-1, pose)} strokeWidth={limb.arm * 0.32} transform={`translate(${-limb.arm * 0.3},0)`} />
+        <path d={armPath(1, pose)} strokeWidth={limb.arm * 0.32} transform={`translate(${limb.arm * 0.3},0)`} />
       </g>
       {/* 膝のあたりのハイライト */}
       <g fill={hi(skin.value, 0.4)} opacity={0.5}>
-        <ellipse cx={CX - 26} cy={BODY.knee - 24} rx={4} ry={16} />
-        <ellipse cx={CX + 26} cy={BODY.knee - 24} rx={4} ry={16} />
+        {[-1, 1].map((side) => {
+          const k = kneePos(side, pose);
+          return <ellipse key={side} cx={k.x - side * 3} cy={k.y - 24} rx={4} ry={16} />;
+        })}
       </g>
       {/* 手 */}
       {[-1, 1].map((side) => {
-        const h = handPos(side);
+        const h = handPos(side, pose);
         return (
-          <g key={side} transform={`translate(${h.x},${h.y}) scale(${side},1)`}>
+          <g key={side} transform={`translate(${h.x},${h.y}) rotate(${h.angle}) scale(${side},1)`}>
             <path
               d="M -6.5,-9 C -8.5,-3 -8,6 -4,10.5 C 0,13.5 6,11.5 7,4.5 C 8,-2.5 6.5,-8.5 4.5,-10.5 Z"
               fill={skin.value}
@@ -157,8 +168,20 @@ export function Avatar({
 
       {/* 足 */}
       <g stroke={skinInk} strokeWidth={1.5}>
-        <ellipse cx={CX - 21} cy={BODY.ankle + 6} rx={10} ry={6.5} fill={skin.value} />
-        <ellipse cx={CX + 21} cy={BODY.ankle + 6} rx={10} ry={6.5} fill={skin.value} />
+        {[-1, 1].map((side) => {
+          const f = footPos(side, pose);
+          return (
+            <ellipse
+              key={side}
+              cx={f.x}
+              cy={f.y}
+              rx={10}
+              ry={6.5}
+              fill={skin.value}
+              transform={`rotate(${f.angle} ${f.x} ${f.y})`}
+            />
+          );
+        })}
       </g>
 
       {/* 首 */}
@@ -223,11 +246,11 @@ export function Avatar({
         />
       </g>
 
-      {/* 服 */}
-      <Outfit variant={look.outfit} d={d} skin={skin} />
+      {/* 服。袖は腕の曲線から作られるので、どのポーズでも腕に沿う */}
+      <Outfit variant={look.outfit} d={d} skin={skin} pose={pose} />
 
       {/* 頭（顔の座標系） */}
-      <g transform={HEAD_TRANSFORM}>
+      <g transform={headTransform}>
         {/* 耳 */}
         <g stroke={skinInk} strokeWidth={1.4}>
           <ellipse cx={101} cy={112} rx={7} ry={12} fill={skin.value} />
@@ -258,8 +281,8 @@ export function Avatar({
 
       {/* 全体の縁の光（リムライト）。背景から浮き上がって見える */}
       <g fill="none" stroke={mix("#ffffff", skin.value, 0.35)} strokeWidth={2} opacity={0.3} strokeLinecap="round">
-        <path d={armPath(1)} transform={`translate(${limb.arm * 0.36},0)`} strokeWidth={limb.arm * 0.24} />
-        <path d={calfPath(1)} transform={`translate(${limb.calf * 0.34},0)`} strokeWidth={limb.calf * 0.22} />
+        <path d={armPath(1, pose)} transform={`translate(${limb.arm * 0.36},0)`} strokeWidth={limb.arm * 0.24} />
+        <path d={calfPath(1, pose)} transform={`translate(${limb.calf * 0.34},0)`} strokeWidth={limb.calf * 0.22} />
       </g>
     </svg>
   );
