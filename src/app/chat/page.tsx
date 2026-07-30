@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AffectionGauge, BackButton, Dots, Stage } from "@/components/ui";
 import { isTagIncomplete, splitExpression, type Expression } from "@/lib/expressions";
-import { splitMemory } from "@/lib/memory";
+import { splitMemory, stripCompleteMemoryTag } from "@/lib/memory";
 import { PENDING_KEY } from "@/app/page";
 import { idleLine } from "@/lib/prompt";
 import { useStore } from "@/lib/store";
@@ -76,7 +76,7 @@ export default function ChatPage() {
       }
       acc += decoder.decode();
       const final = splitExpression(acc);
-      const memory = splitMemory(final.body);
+      const memory = stripCompleteMemoryTag(final.body);
       setExpression(final.expression);
       replaceLastModel(memory.body);
       if (memory.learned) addMemory(memory.learned);

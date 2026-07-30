@@ -10,11 +10,16 @@
  * 出さないよう保留する
  */
 
+// 全角コロン「：」で書かれることもあるので両方受け付ける
 const KEYWORD = "memory:";
-const MEMORY_TAG = /[[［]memory:\s*([^\]］]*)[\]］]\s*$/i;
+const MEMORY_TAG = /[[［]memory[:：]\s*([^\]］]*)[\]］]\s*$/i;
 
 function lastOpenBracketIndex(text: string): number {
   return Math.max(text.lastIndexOf("["), text.lastIndexOf("［"));
+}
+
+function normalizeColon(tail: string): string {
+  return tail.replace(/：/g, ":");
 }
 
 export interface MemorySplit {
@@ -37,7 +42,7 @@ export function splitMemory(text: string): MemorySplit {
   // 閉じ括弧が来るまで本文として出さずに保留する
   const openIdx = lastOpenBracketIndex(text);
   if (openIdx !== -1) {
-    const tail = text.slice(openIdx + 1).toLowerCase();
+    const tail = normalizeColon(text.slice(openIdx + 1).toLowerCase());
     const stillTypingKeyword = KEYWORD.startsWith(tail);
     const pastKeyword = tail.startsWith(KEYWORD);
     if (stillTypingKeyword || pastKeyword) {
@@ -45,5 +50,26 @@ export function splitMemory(text: string): MemorySplit {
     }
   }
 
+  return { body: text, learned: null };
+}
+
+/**
+ * ストリームが終わったあと、最後に一度だけ使う版。
+ *
+ * splitMemory() は「まだ続きが来るかもしれない」前提で、書きかけに見える
+ * 末尾を保留して隠す。だがストリームが終わったあとにも同じ判定を使うと、
+ * 閉じ括弧を書き忘れた・全角コロンを使ったなど、タグが完成しなかった
+ * ときに本文の末尾が無言で消えてしまう（文字が途中で切れて見える不具合の
+ * 原因になっていた）。もう続きは来ないので、完成したタグだけを取り除き、
+ * 中途半端なものはそのまま本文として出す
+ */
+export function stripCompleteMemoryTag(text: string): MemorySplit {
+  const complete = MEMORY_TAG.exec(text);
+  if (complete) {
+    return {
+      body: text.slice(0, complete.index).trimEnd(),
+      learned: complete[1].trim() || null,
+    };
+  }
   return { body: text, learned: null };
 }
