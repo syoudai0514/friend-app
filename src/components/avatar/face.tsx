@@ -179,11 +179,11 @@ function Eye({
           rx={11.5}
           ry={14 * sy}
           fill="none"
-          stroke={mix(eye.dark, "#2a1b30", 0.45)}
-          strokeWidth={1.7}
+          stroke={mix(eye.dark, "#241630", 0.6)}
+          strokeWidth={2.6}
         />
         {/* まぶたの落ち影 */}
-        <path d="M -19,-22 L 19,-22 L 19,-5 C 11,-12 -11,-12 -19,-5 Z" fill="#2a1b26" opacity={0.22} />
+        <path d="M -19,-22 L 19,-22 L 19,-5 C 11,-12 -11,-12 -19,-5 Z" fill="#2a1b26" opacity={0.3} />
         {/* じと目・ねむたげのまぶた */}
         {shape.lidCover ? (
           <g>
@@ -199,9 +199,10 @@ function Eye({
           </g>
         ) : null}
         {/* ハイライト */}
-        <circle cx={-5.5} cy={dy - 7 * sy} r={4.4} fill="#ffffff" />
-        <circle cx={5.5} cy={dy + 5 * sy} r={2.3} fill="#ffffff" opacity={0.9} />
-        <circle cx={7} cy={dy - 9 * sy} r={1.4} fill="#ffffff" opacity={0.75} />
+        <ellipse cx={-5.2} cy={dy - 6.5 * sy} rx={5.4} ry={5.8 * sy} fill="#ffffff" />
+        <ellipse cx={-5.2} cy={dy - 6.5 * sy} rx={7.2} ry={7.6 * sy} fill="#ffffff" opacity={0.28} />
+        <ellipse cx={5.4} cy={dy + 5.5 * sy} rx={3} ry={2.6 * sy} fill="#ffffff" opacity={0.92} />
+        <circle cx={7.5} cy={dy - 9 * sy} r={1.5} fill="#ffffff" opacity={0.8} />
       </g>
 
       {/* 二重 */}
@@ -216,8 +217,8 @@ function Eye({
         />
       )}
 
-      {/* 上まつげ */}
-      <path d={shape.lash} fill={lash} />
+      {/* 上まつげ。参考絵は目尻ほど厚い。形は保ったまま厚みだけ足す */}
+      <path d={shape.lash} fill={lash} stroke={lash} strokeWidth={2.2} strokeLinejoin="round" />
       {shape.spikes?.map((d, i) => (
         <path key={i} d={d} fill={lash} />
       ))}

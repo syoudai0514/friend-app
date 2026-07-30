@@ -18,6 +18,30 @@ interface HairDef {
   extras?: (c: ColorOption, g: string) => ReactNode;
   /** 毛流れ */
   strands?: string[];
+  /** 前髪の毛先。[中心x, 毛先y, 半幅] の並び。省略すると既定の毛束になる */
+  locks?: [number, number, number][];
+}
+
+/**
+ * 前髪の毛先。
+ *
+ * なめらかな一枚のパスだけだと、髪がベタ塗りのヘルメットに見えてしまう。
+ * 先の尖った毛束をいくつか下にはみ出させて、輪郭に切れ込みを作る。
+ * 毛束は前髪本体の「下」に描くので、束の上側は本体に隠れて継ぎ目が出ない。
+ */
+const DEFAULT_LOCKS: [number, number, number][] = [
+  [116, 99, 14],
+  [136, 107, 16],
+  [156, 100, 15],
+  [176, 106, 16],
+  [188, 98, 13],
+];
+
+function lockPath(x: number, y: number, w: number): string {
+  // 上は広く、下へ向かってすぼまり、先端で尖る
+  return `M ${x - w},${y - 32}
+          C ${x - w * 0.9},${y - 18} ${x - w * 0.5},${y - 8} ${x},${y}
+          C ${x + w * 0.5},${y - 8} ${x + w * 0.9},${y - 18} ${x + w},${y - 32} Z`;
 }
 
 /**
@@ -326,6 +350,8 @@ export function HairFront({ variant, color }: { variant: string; color: ColorOpt
   const g = `hairg-${color.id}`;
   const clip = `bangclip-${variant}-${color.id}`;
   const tipShade = `bangtip-${variant}-${color.id}`;
+  const lockClip = `banglock-${variant}-${color.id}-`;
+  const shine = `hairshine-${variant}-${color.id}`;
   const lineColor = ink(color.value, 0.5);
 
   return (
@@ -338,36 +364,64 @@ export function HairFront({ variant, color }: { variant: string; color: ColorOpt
           <stop offset="0%" stopColor={mix(color.value, color.dark, 0.9)} stopOpacity={0} />
           <stop offset="100%" stopColor={mix(color.value, color.dark, 0.9)} stopOpacity={0.45} />
         </linearGradient>
+        <radialGradient id={shine}>
+          <stop offset="0%" stopColor={hi(color.light, 0.9)} stopOpacity={0.8} />
+          <stop offset="55%" stopColor={hi(color.light, 0.7)} stopOpacity={0.34} />
+          <stop offset="100%" stopColor={hi(color.light, 0.5)} stopOpacity={0} />
+        </radialGradient>
       </defs>
+
+      {/* 毛先の束。本体より先に描いて、下にはみ出した先端だけを見せる */}
+      <g>
+        {(def.locks ?? DEFAULT_LOCKS).map(([x, y, w], i) => (
+          <g key={i}>
+            <path d={lockPath(x, y, w)} fill={`url(#${g})`} />
+            {/* 束の片側を暗くして、隣の束との境目を作る */}
+            <path
+              d={lockPath(x, y, w)}
+              fill={mix(color.dark, "#1a121e", 0.35)}
+              opacity={0.18}
+              stroke="none"
+              clipPath={`url(#${lockClip}${i})`}
+            />
+          </g>
+        ))}
+        <defs>
+          {(def.locks ?? DEFAULT_LOCKS).map(([x, y, w], i) => (
+            <clipPath key={i} id={`${lockClip}${i}`}>
+              <rect x={x - w} y={y - 32} width={w * 0.72} height={36} />
+            </clipPath>
+          ))}
+        </defs>
+      </g>
 
       <path d={def.bangsPath} fill={`url(#${g})`} />
 
       {/* 艶・毛流れ・毛先の陰は、すべて前髪の内側に収める */}
       <g clipPath={`url(#${clip})`} stroke="none">
-        {/* 天使の輪 */}
-        <path
-          d={`M 106,74 C 118,49 182,49 194,74
-              C 189,71 185,80 180,72 C 175,63 170,79 164,69
-              C 158,59 152,77 146,66 C 140,56 134,78 128,68
-              C 123,60 118,77 112,70 C 110,68 108,72 106,74 Z`}
-          fill={hi(color.light, 0.42)}
-          opacity={0.85}
-        />
-        <path
-          d="M 116,62 C 128,49 172,49 184,62 C 172,55 128,55 116,62 Z"
-          fill="#ffffff"
-          opacity={0.35}
-        />
+        {/* 天使の輪。輪郭が出ると円盤に見えるので、外へ向けて完全に消す */}
+        <ellipse cx={150} cy={63} rx={48} ry={15} fill={`url(#${shine})`} />
         {/* 毛先に向かって沈む陰 */}
         <rect x={84} y={72} width={132} height={56} fill={`url(#${tipShade})`} />
-        {/* 毛流れ */}
+        {/* 毛流れ。参考絵は毛束ごとに細い線が何本も走っている */}
         {def.strands && (
-          <g stroke={mix(color.dark, lineColor, 0.5)} strokeWidth={1.4} fill="none" opacity={0.28}>
+          <g stroke={mix(color.dark, lineColor, 0.5)} strokeWidth={1.4} fill="none" opacity={0.32}>
             {def.strands.map((d, i) => (
               <path key={i} d={d} />
             ))}
           </g>
         )}
+        <g
+          stroke={mix(color.dark, "#20161f", 0.4)}
+          strokeWidth={1}
+          fill="none"
+          opacity={0.16}
+          strokeLinecap="round"
+        >
+          {(def.locks ?? DEFAULT_LOCKS).map(([x, y], i) => (
+            <path key={i} d={`M ${x},34 C ${x - 3},${(34 + y) / 2} ${x - 2},${y - 34} ${x},${y - 14}`} />
+          ))}
+        </g>
       </g>
 
       {def.extras?.(color, g)}
