@@ -156,7 +156,10 @@ export default function SettingsPage() {
   const p = state.persona;
 
   const exportData = () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    // 書き出したファイルが「どの版の形式か」を先頭に残す。
+    // 将来べつの版のアプリへ移すとき、読み込む側がこれを見て変換できる
+    const payload = { schemaVersion: 1, ...state };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
